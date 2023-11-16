@@ -1,0 +1,56 @@
+---
+title: "Test"
+output: 
+  pdf_document :
+    toc : TRUE
+    toc_depth : 2
+    number_section : TRUE
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(reticulate)
+library(ggplot2)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+library(gridExtra)
+```
+
+```{r}
+data <- read.csv("Data-projetmodIA-2324.csv")
+# Sélectionner les colonnes pertinentes (code_epci, latit, longit)
+donnees_polluant <- subset(data, select = c(code_epci, annee_inv, nox_kg, so2_kg, pm10_kg, nh3_kg, ges_teqco2, ch4_t, co2_t, n2o_t, latit, longit))
+
+# Afficher les premières lignes de la nouvelle variable
+head(donnees_polluant)
+```
+
+```{r}
+
+# Liste des polluants
+polluants <- c("nox_kg", "so2_kg", "pm10_kg", "nh3_kg", "ges_teqco2", "ch4_t", "co2_t", "n2o_t")
+
+data_polluant <- subset(data, select = c(code_epci, nox_kg, latit, longit))
+summary(data_polluant)
+```
+
+
+```{r}
+
+library(ggmap)
+library(osmdata)
+
+
+# Obtenir la carte de la région Occitanie
+occitanie_map <- get_map(location = getbb('Occitanie'), zoom = 7)
+
+# Créer le graphique de carte
+ggmap(occitanie_map) +
+  geom_point(data = data_polluant, aes(x = longit, y = latit, color = data_polluant[[polluant]]), size = 3) +
+  scale_color_gradient(low = "green", high = "red", name = "Concentration de nox_kg") +
+  labs(title = "Concentration d'oxyde d'azote (nox_kg) par EPCI en Occitanie")
+
+```

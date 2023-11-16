@@ -1,7 +1,7 @@
 ---
 title: "Projet d'étude de Statistiques"
 author: "Maxime Baba, Alexandre Demarquet, Félix de Brandois, Tristan Gay"
-institute : "INSA Toulouse / IMT"
+institute : "INSA Toulouse / ENSEEIHT"
 date: "`r Sys.Date()`"
 output: 
   pdf_document :
@@ -29,8 +29,25 @@ library(gridExtra)
 
 ```{r}
 data <- read.csv("Data-projetmodIA-2324.csv")
-
-summary(data)
-data[, 1]
-
 ```
+
+
+## Analyse descriptive des données
+
+
+## Visualisation des individus
+
+
+## Réduction de dimension
+
+
+## Classification des EPCI
+
+
+## Analyse discriminante linéaire
+
+
+## Explication des données
+
+
+## Conclusion

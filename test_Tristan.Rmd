@@ -35,6 +35,7 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
 ```{r}
+
 summary(data)
 data[1,]
 ```
@@ -89,32 +90,35 @@ grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 
 ```{r}
 
-g1= ggplot(data = data) + geom_histogram(aes(scale(x = nox_kg)))
-g2= ggplot(data = data) + geom_histogram(aes(scale(x = so2_kg)))
-g3= ggplot(data = data) + geom_histogram(aes(scale(x = pm10_kg)))
-g4= ggplot(data = data) + geom_histogram(aes(scale(x = pm25_kg)))
-g5= ggplot(data = data) + geom_histogram(aes(scale(x = co_kg)))
-g6= ggplot(data = data) + geom_histogram(aes(scale(x = c6h6_kg)))
-g7= ggplot(data = data) + geom_histogram(aes(scale(x = ges_teqco2)))
-g8= ggplot(data = data) + geom_histogram(aes(scale(x = ch4_t)))
-g9= ggplot(data = data) + geom_histogram(aes(scale(x = co2_t)))
-g10= ggplot(data = data) + geom_histogram(aes(scale(x = n2o_t)))
-g11= ggplot(data = data) + geom_histogram(aes(scale(x = nh3_kg)))
+g1= ggplot(data = data) + geom_histogram(aes(x = scale(nox_kg)))
+g2= ggplot(data = data) + geom_histogram(aes(x = scale(so2_kg)))
+g3= ggplot(data = data) + geom_histogram(aes(x = scale(pm10_kg)))
+g4= ggplot(data = data) + geom_histogram(aes(x = scale(pm25_kg)))
+g5= ggplot(data = data) + geom_histogram(aes(x = scale(co_kg)))
+g6= ggplot(data = data) + geom_histogram(aes(x = scale(c6h6_kg)))
+g7= ggplot(data = data) + geom_histogram(aes(x = scale(ges_teqco2)))
+g8= ggplot(data = data) + geom_histogram(aes(x = scale(ch4_t)))
+g9= ggplot(data = data) + geom_histogram(aes(x = scale(co2_t)))
+g10= ggplot(data = data) + geom_histogram(aes(x = scale(n2o_t)))
+g11= ggplot(data = data) + geom_histogram(aes(x = scale(nh3_kg)))
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
 ```{r}
-g1= ggplot(data = data) + geom_histogram(aes(log(scale(x = nox_kg))))
-g2= ggplot(data = data) + geom_histogram(aes(log(scale(x = so2_kg))))
-g3= ggplot(data = data) + geom_histogram(aes(log(scale(x = pm10_kg))))
-g4= ggplot(data = data) + geom_histogram(aes(log(scale(x = pm25_kg))))
-g5= ggplot(data = data) + geom_histogram(aes(log(scale(x = co_kg))))
-g6= ggplot(data = data) + geom_histogram(aes(log(scale(x = c6h6_kg))))
-g7= ggplot(data = data) + geom_histogram(aes(log(scale(x = ges_teqco2))))
-g8= ggplot(data = data) + geom_histogram(aes(log(scale(x = ch4_t))))
-g9= ggplot(data = data) + geom_histogram(aes(log(scale(x = co2_t))))
-g10= ggplot(data = data) + geom_histogram(aes(log(scale(x = n2o_t))))
-g11= ggplot(data = data) + geom_histogram(aes(log(scale(x = nh3_kg))))
+g1= ggplot(data = data) + geom_histogram(aes(x=scale(log(nox_kg))))
+g2= ggplot(data = data) + geom_histogram(aes(x = scale(log(so2_kg))))
+g3= ggplot(data = data) + geom_histogram(aes(x = scale(log(pm10_kg))))
+g4= ggplot(data = data) + geom_histogram(aes(x = scale(log(pm25_kg))))
+g5= ggplot(data = data) + geom_histogram(aes(x = scale(log(co_kg))))
+g6= ggplot(data = data) + geom_histogram(aes(x = scale(log(c6h6_kg))))
+g7= ggplot(data = data) + geom_histogram(aes(x = scale(log(ges_teqco2))))
+g8= ggplot(data = data) + geom_histogram(aes(x = scale(log(ch4_t))))
+g9= ggplot(data = data) + geom_histogram(aes(x = scale(log(co2_t))))
+g10= ggplot(data = data) + geom_histogram(aes(x = scale(log(n2o_t))))
+g11= ggplot(data = data) + geom_histogram(aes(x = scale(log(nh3_kg))))
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
+```
+```{r}
+
 ```
 

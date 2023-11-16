@@ -1,0 +1,36 @@
+---
+title: "Projet d'étude de Statistiques"
+author: "Maxime Baba, Alexandre Demarquet, Félix de Brandois, Tristan Gay"
+institute : "INSA Toulouse / IMT"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document :
+    toc : TRUE
+    toc_depth : 2
+    number_section : TRUE
+header-includes:
+   - \usepackage{dsfont}
+   - \usepackage{color}
+   - \newcommand{\1}{\mathds{1}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(reticulate)
+library(ggplot2)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+library(gridExtra)
+```
+
+## Data du Projet
+
+```{r}
+data <- read.csv("Data-projetmodIA-2324.csv")
+
+summary(data)
+data[, 1]
+
+```

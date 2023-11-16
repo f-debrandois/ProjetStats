@@ -68,7 +68,6 @@ g8 = ggplot(data2019, aes(x = TypeEPCI, y = ch4_t)) + geom_boxplot()
 g9 = ggplot(data2019, aes(x = TypeEPCI, y = co2_t)) + geom_boxplot()
 g10 = ggplot(data2019, aes(x = TypeEPCI, y = n2o_t)) + geom_boxplot()
 g11 = ggplot(data2019, aes(x = TypeEPCI, y = nh3_kg)) + geom_boxplot()
-g12 = ggplot(data2019, aes(x = TypeEPCI)) + geom_bar()
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, g12, ncol = 3)
 
 ```
@@ -154,6 +153,9 @@ plot(x,col=color,pch=20)
 
 ```{r}
 
+
+g12 = ggplot(data2019, aes(x = TypeEPCI)) + geom_bar()
+plot(g12)
 
 numeric_data <- as.matrix(data_quant)
 # Calculer la matrice de covariance

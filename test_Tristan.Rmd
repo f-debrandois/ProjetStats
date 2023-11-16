@@ -68,7 +68,9 @@ g8 = ggplot(data2019, aes(x = TypeEPCI, y = ch4_t)) + geom_boxplot()
 g9 = ggplot(data2019, aes(x = TypeEPCI, y = co2_t)) + geom_boxplot()
 g10 = ggplot(data2019, aes(x = TypeEPCI, y = n2o_t)) + geom_boxplot()
 g11 = ggplot(data2019, aes(x = TypeEPCI, y = nh3_kg)) + geom_boxplot()
-grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
+g12 = ggplot(data2019, aes(x = TypeEPCI)) + geom_bar()
+grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, g12, ncol = 3)
+
 ```
 
 ```{r}
@@ -119,6 +121,67 @@ g11= ggplot(data = data) + geom_histogram(aes(x = scale(log(nh3_kg))))
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 ```{r}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+  
+library("MASS")
+library("Matrix")
 
+
+lda_data <- lda(TypeEPCI ~. ,data=dlog)
+
+D1 <- lda_data$scaling[,1] # vecteur 1
+
+D2 <- lda_data$scaling[,2] # vecteur 2
+
+# Calcul de projeté des individus sur D1 et D2
+
+x <- as.matrix(dlog[,-12])%*%as.matrix(cbind(D1,D2))
+
+
+
+color <- dlog$TypeEPCI ;color[color=="CC"] <- "black";
+
+color[color=="CA"] <- "red";color[color=="CU"] <- "green"; color[color=="Metropole"] <- "blue"
+
+
+plot(x,col=color,pch=20)
+#plot(xy,col=color,pch=16 )
 ```
 
+
+```{r}
+
+
+numeric_data <- as.matrix(data_quant)
+# Calculer la matrice de covariance
+cov_matrix <- cov(numeric_data)
+
+# Calculer la décomposition spectrale de la matrice de covariance
+spectral_decomposition <- eigen(cov_matrix)
+
+# Calculer la matrice à la puissance -1/2
+inv_sqrt_cov_matrix <- spectral_decomposition$vectors %*% diag(1/sqrt(spectral_decomposition$values)) %*% t(spectral_decomposition$vectors)
+
+# Appliquer la transformation: Cov^-1/2 * x
+transformed_data <-  numeric_data%*% inv_sqrt_cov_matrix
+
+data_quant=as.data.frame(transformed_data)
+
+
+dlog[1:11]=data_quant
+
+lda_data <- lda(TypeEPCI ~. ,data=dlog)
+
+D1 <- lda_data$scaling[,1] # vecteur 1
+
+D2 <- lda_data$scaling[,2] # vecteur 2
+
+# Calcul de projeté des individus sur D1 et D2
+
+xy <- as.matrix(dlog[,-12])%*%as.matrix(cbind(D1,D2))
+plot(xy,col=color,pch=20)
+
+```

@@ -25,29 +25,39 @@ library(factoextra)
 library(gridExtra)
 ```
 
-## Data du Projet
 
 ```{r}
 data <- read.csv("Data-projetmodIA-2324.csv")
 ```
 
-
-## Analyse descriptive des données
-
-
-## Visualisation des individus
+# Introduction
 
 
-## Réduction de dimension
+
+# Analyse descriptive des données
+## Stats descriptives
+
+## Analyse des données
+### PCA
+### Réduction de dimension (MCA)
 
 
-## Classification des EPCI
-
+# Classification des EPCI
+## Clustering
 
 ## Analyse discriminante linéaire
 
 
-## Explication des données
+# EMS
+
+## Modèle linéaire
+### ANOVA
+
+### Régression linéaire
+
+### ANCOVA
+
+## Modèle linéaire généralisé
 
 
-## Conclusion
+# Conclusion

@@ -27,19 +27,32 @@ data = read.csv("Data-projetmodIA-2324.csv")
 
 
 ```{r}
-taille_train=round(0.7*nrow(dlog))
-d_train=dlog[1:taille_train,]
-d_test=dlog[taille_train:nrow(dlog),]
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+
+data_mel <- dlog[sample(nrow(dlog)), ]
+
+
+taille_train=round(0.7*nrow(data_mel))
+d_train=data_mel[1:taille_train,]
+d_test=data_mel[taille_train:nrow(data_mel),]
 
 lda_data <- lda(TypeEPCI ~ .,data=d_train)
 
 D1 <- lda_data$scaling[,1] # vecteur 1
 
 D2 <- lda_data$scaling[,2] # vecteur 2
+D3 <- lda_data$scaling[,3] # vecteur 2
+
 
 # Calcul de projeté des individus sur D1 et D2
 
-x <- as.matrix(dlog[,-12])%*%as.matrix(cbind(D1,D2))
+x <- as.matrix(d_train[,-12])%*%as.matrix(cbind(D1,D2))
+x1 <- as.matrix(d_train[,-12])%*%as.matrix(cbind(D1,D3))
+x11 <- as.matrix(d_train[,-12])%*%as.matrix(cbind(D2,D3))
+
 
 
 
@@ -49,16 +62,48 @@ color[color=="CA"] <- "red";color[color=="CU"] <- "green"; color[color=="Metropo
 
 
 plot(x,col=color,pch=20)
+plot(x1,col=color,pch=20)
+plot(x11,col=color,pch=20)
+
 
 predictions <- predict(lda_data, newdata = d_test)
-str(predictions)
-table(d_test$TypeEPCI,predictions$class)
+table(vrai_valeur=d_test$TypeEPCI,prediction=predictions$class)
 
 
 ```
 ```{r}
+dlog2=dlog[1:11]
+dlog2$ch4_t=data$ch4_t>1000
 
+
+
+data_mel2 <- dlog2[sample(nrow(dlog2)), ]
+
+taille_train=round(0.7*nrow(data_mel2))
+d_train=data_mel2[1:taille_train,]
+d_test=data_mel2[taille_train:nrow(data_mel2),]
+
+lda_data <- lda(ch4_t ~ .,data=d_train)
+
+D <- lda_data$scaling[,1] # vecteur 1
+
+#D2 <- lda_data$scaling[,2] # vecteur 2
+
+# Calcul de projeté des individus sur D1 et D2
+
+x2 <- as.matrix(d_train[,-9])%*%as.matrix(cbind(D))
+
+
+
+color2 <- dlog2$ch4_t ;color2[color2=="TRUE"] <- "black";
+
+color2[color2=="FALSE"] <- "red"
+
+
+plot(x2,col=color2,pch=20)
+
+predictions2 <- predict(lda_data, newdata = d_test)
+table(vrai_valeur=d_test$ch4_t,prediction=predictions2$class)
 
 
 ```
-

@@ -1,0 +1,88 @@
+---
+title: "Question 3"
+output: html_document
+date: "2023-12-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(reticulate)
+library(ggplot2)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+library(gridExtra)
+
+data = read.csv("Data-projetmodIA-2324.csv")
+```
+```{r}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+
+anov2= lm(ges_teqco2 ~TypeEPCI * annee_inv, data=dlog)
+summary(anov2)
+```
+```{r}
+anov_sans_int=lm(ges_teqco2 ~TypeEPCI + annee_inv, data=dlog)
+anova(anov_sans_int,anov2)
+```
+
+```{r}
+anov_annee=lm(ges_teqco2 ~annee_inv, data=dlog)
+anov_type=lm(ges_teqco2 ~TypeEPCI, data=dlog)
+
+anova(anov_annee,anov_sans_int)
+anova(anov_type,anov_sans_int)
+```
+```{r}
+anova(lm(ges_teqco2 ~1, data=dlog),anov_type)
+
+```
+```{r}
+anova(anov_type,anov2)
+
+```
+
+
+On garde le modèle anov_type:
+
+```{r}
+summary(anov_type)
+
+```
+On peut pas annuler 1 des paramètres, on ne peut donc pas regrouper des modalités entre elles, et on garde donc ce modèle. On essaye de voir sa capacité de prédiction:
+```{r}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+taille_train=round(0.7*nrow(dlog))
+d_train=dlog[1:taille_train,]
+d_test=dlog[taille_train:nrow(dlog),]
+
+mod_anov=lm(ges_teqco2 ~TypeEPCI, data=d_train)
+pred=predict(mod_anov,d_test)
+resultat=data.frame(vrai_ges=d_test$ges_teqco2,prediction=pred,ecart=abs(d_test$ges_teqco2-pred),erreur_pourcentage=abs(d_test$ges_teqco2-pred)/abs(d_test$ges_teqco2))
+summary(resultat)
+
+absc=seq(-4, 4, length.out = nrow(d_test))
+
+g1= ggplot(resultat,aes(x=vrai_ges,y=prediction))+geom_point()
+g2= ggplot(resultat,aes(x=absc,y=vrai_ges))+geom_point()
+g3= ggplot(resultat,aes(x=absc,y=prediction))+geom_point()
+
+grid.arrange(g1,g2,g3,ncol=2)
+```

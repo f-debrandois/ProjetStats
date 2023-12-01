@@ -1,0 +1,64 @@
+---
+title: "Question 6"
+output: html_document
+date: "2023-12-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+
+```{r}
+library(reticulate)
+library(ggplot2)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+library(gridExtra)
+
+data = read.csv("Data-projetmodIA-2324.csv")
+```
+
+## Including Plots
+
+
+```{r}
+taille_train=round(0.7*nrow(dlog))
+d_train=dlog[1:taille_train,]
+d_test=dlog[taille_train:nrow(dlog),]
+
+lda_data <- lda(TypeEPCI ~ .,data=d_train)
+
+D1 <- lda_data$scaling[,1] # vecteur 1
+
+D2 <- lda_data$scaling[,2] # vecteur 2
+
+# Calcul de projeté des individus sur D1 et D2
+
+x <- as.matrix(dlog[,-12])%*%as.matrix(cbind(D1,D2))
+
+
+
+color <- dlog$TypeEPCI ;color[color=="CC"] <- "black";
+
+color[color=="CA"] <- "red";color[color=="CU"] <- "green"; color[color=="Metropole"] <- "blue"
+
+
+plot(x,col=color,pch=20)
+
+predictions <- predict(lda_data, newdata = d_test)
+str(predictions)
+table(d_test$TypeEPCI,predictions$class)
+
+
+```
+```{r}
+
+
+
+```
+

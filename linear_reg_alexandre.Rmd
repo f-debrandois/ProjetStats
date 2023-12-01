@@ -1,0 +1,82 @@
+---
+title: "multi_linear_reg_alex"
+author: "alexandre"
+date: "2023-11-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## On importe les données et on les modifies
+```{r}
+library(corrplot)
+library(factoextra)
+library(FactoMineR)  
+Data<-read.csv('Data-projetmodIA-2324.csv')
+
+data_quant=Data[,c("nox_kg","so2_kg","pm10_kg","pm25_kg","co_kg","c6h6_kg","nh3_kg","ges_teqco2","ch4_t","co2_t","n2o_t")]
+data_quant_scaled <- scale(log(data_quant))
+data_scaled_df <- as.data.frame(data_quant_scaled)
+```
+
+
+
+
+## Modèle linéaire expliquant le gaz à effet de serre en fonction de tous les autres polluants
+
+
+
+```{r }
+mod_ges=lm(formula=ges_teqco2~.,data=data_scaled_df)
+summary(mod_ges)
+```
+
+## Selection des variables explicatives
+
+Nous allons maintenant simplifier le modèle en selctionnant les variables explicatives pertinentes
+```{r}
+library(leaps)
+```
+
+
+# Avec la méthode backward
+```{r}
+choixb<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="backward")
+summary(choixb)
+```
+
+```{r}
+plot(choixb,scale="bic")
+plot(choixb,scale="adjr2")
+plot(choixb,scale="Cp")
+```
+Pour la méthode backward nous pouvons simplfier
+
+# Avec la méthode forward
+
+```{r}
+choixf<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="forward")
+summary(choixf)
+```
+```{r}
+plot(choixf,scale="bic")
+plot(choixf,scale="adjr2")
+plot(choixf,scale="Cp")
+```
+
+
+
+Ainsi pour la méthode forward l'on peut retenir le modèle complet sans les variables
+
+# Validation des sous modèles
+Par la suite nous garderons le modèle suivant :
+(à ecrire complet sans les CO_kg et c6h6)
+
+```{r}
+reg_simpl=lm(formula=ges_teqco2~nox_kg+so2_kg+pm10_kg+pm25_kg+nh3_kg+ch4_t+co2_t+n2o_t,data=data_scaled_df)
+anova(reg_simpl,mod_ges)
+```
+
+En effectuant un test de Fisher de sous model on obtient une pvaleur <0.05 donc on rejette H0 et on nepeut pas simplifier le modèle on va donc plsu décortiquer et regarder le step aic

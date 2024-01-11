@@ -39,40 +39,41 @@ taille_train=round(0.7*nrow(data_mel))
 d_train=data_mel[1:taille_train,]
 d_test=data_mel[taille_train:nrow(data_mel),]
 
-lda_data <- lda(TypeEPCI ~ .,data=d_train)
-
-D1 <- lda_data$scaling[,1] # vecteur 1
-
-D2 <- lda_data$scaling[,2] # vecteur 2
-D3 <- lda_data$scaling[,3] # vecteur 2
-
-
-# Calcul de projeté des individus sur D1 et D2
-
-x <- as.matrix(d_train[,-12])%*%as.matrix(cbind(D1,D2))
-x1 <- as.matrix(d_train[,-12])%*%as.matrix(cbind(D1,D3))
-x11 <- as.matrix(d_train[,-12])%*%as.matrix(cbind(D2,D3))
-
-
-
 
 color <- dlog$TypeEPCI ;color[color=="CC"] <- "black";
 
 color[color=="CA"] <- "red";color[color=="CU"] <- "green"; color[color=="Metropole"] <- "blue"
 
+lda_model <- lda(TypeEPCI ~ .,data=d_train)
 
-plot(x,col=color,pch=20)
-plot(x1,col=color,pch=20)
-plot(x11,col=color,pch=20)
+# Afficher les résultats de la LDA
+print(lda_model)
+
+# Projeter les individus dans les coordonnées de la LDA
+lda_coordinates <- predict(lda_model)$x
+
+# Afficher les individus dans le graphique
+plot(lda_coordinates[, c(1,2)], pch = 16, main = "LDA Plot",
+     xlab = "LD1", ylab = "LD2",col=color)
+
+plot(lda_coordinates[, c(1,3)], pch = 16, main = "LDA Plot",
+     xlab = "LD1", ylab = "LD3",col=color)
+
+plot(lda_coordinates[, c(2,3)], pch = 16, main = "LDA Plot",
+     xlab = "LD2", ylab = "LD3",col=color)
+# Ajouter une légende
+#legend("topright", legend = levels(data$Groupe), col = 1:2, pch = 16, title = "Groupes")
 
 
-predictions <- predict(lda_data, newdata = d_test)
+
+predictions <- predict(lda_model, newdata = d_test)
 table(vrai_valeur=d_test$TypeEPCI,prediction=predictions$class)
 
 
 ```
 ```{r}
 dlog2=dlog[1:11]
+dlog2$ch4_aux=data$ch4_t
 dlog2$ch4_t=data$ch4_t>1000
 
 
@@ -83,15 +84,8 @@ taille_train=round(0.7*nrow(data_mel2))
 d_train=data_mel2[1:taille_train,]
 d_test=data_mel2[taille_train:nrow(data_mel2),]
 
-lda_data <- lda(ch4_t ~ .,data=d_train)
+lda_model <- lda(ch4_t ~ .,data=d_train)
 
-D <- lda_data$scaling[,1] # vecteur 1
-
-#D2 <- lda_data$scaling[,2] # vecteur 2
-
-# Calcul de projeté des individus sur D1 et D2
-
-x2 <- as.matrix(d_train[,-9])%*%as.matrix(cbind(D))
 
 
 
@@ -100,10 +94,22 @@ color2 <- dlog2$ch4_t ;color2[color2=="TRUE"] <- "black";
 color2[color2=="FALSE"] <- "red"
 
 
-plot(x2,col=color2,pch=20)
+
+# Afficher les résultats de la LDA
+print(lda_model)
+
+# Projeter les individus dans les coordonnées de la LDA
+lda_coordinates <- predict(lda_model)$x
+print(lda_coordinates)
+
+vec=c(rep(1,nrow(d_train)))
+# Afficher les individus dans le graphique
+plot(lda_coordinates[, 1],vec, pch = 16, main = "LDA Plot",
+     xlab = "LD1", ylab = "y",col=color2)
+# Ajouter une légende
+#legend("topright", legend = levels(data$Groupe), col = 1:2, pch = 16, title = "Groupes")
 
 predictions2 <- predict(lda_data, newdata = d_test)
 table(vrai_valeur=d_test$ch4_t,prediction=predictions2$class)
-
 
 ```

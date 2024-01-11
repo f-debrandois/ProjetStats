@@ -146,4 +146,67 @@ g3= ggplot(resultat,aes(x=absc,y=prediction))+geom_point()
 
 grid.arrange(g1,g2,g3,ncol=2)
 ```
+Ancova:
+```{r}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+bon_indice=c(7,9,11,12,13)
+dlog=dlog[bon_indice]
 
+summary(dlog)
+
+ancov= lm(ch4_t ~ .^2, data=dlog)
+summary(ancov)
+```
+
+```{r}
+ancov_sans_interact=lm(ch4_t ~ ., data=dlog)
+anova(ancov_sans_interact,ancov)
+```
+
+```{r}
+library("MASS")
+modselect_aic=stepAIC(ancov,trace=T,direction="backward")
+```
+```{r}
+modselect_bic=stepAIC(ancov,trace=T,direction="backward",k=log(nrow(dlog)))
+```
+```{r}
+anova(modselect_bic,ancov)
+
+model_bic_precedent=lm(ch4_t ~ nh3_kg + n2o_t + TypeEPCI + annee_inv + nh3_kg:n2o_t + 
+    nh3_kg:TypeEPCI + n2o_t:TypeEPCI + n2o_t:annee_inv,data=dlog)
+anova(model_bic_precedent,ancov)
+```
+```{r}
+nv_type=dlog$TypeEPCI; nv_type[nv_type=="CU"]="Metr_CU";  nv_type[nv_type=="Metropole"]="Metr_CU"
+
+dlog2=dlog
+dlog2$TypeEPCI=nv_type
+
+ancov_modif_type= lm(ch4_t ~ .^2, data=dlog2)
+summary(ancov_modif_type)
+
+```
+```{r}
+ancov_modif_type_sans_interact=lm(ch4_t ~ ., data=dlog2)
+anova(ancov_modif_type_sans_interact,ancov_modif_type)
+```
+```{r}
+modselect_bic_v2=stepAIC(ancov_modif_type,trace=T,direction="backward",k=log(nrow(dlog2)))
+```
+
+```{r}
+anova(modselect_bic_v2,ancov_modif_type)
+
+bic_prec=lm(ch4_t ~ nh3_kg + n2o_t + TypeEPCI + annee_inv + nh3_kg:n2o_t + 
+    nh3_kg:TypeEPCI + nh3_kg:annee_inv + n2o_t:TypeEPCI + n2o_t:annee_inv, data=dlog2)
+
+anova(bic_prec,ancov_modif_type)
+
+
+```
+Alors, pour l'ancova on ramrque que l'on ne peut pas trop simplifier, pas du tout avec les variables classiques, et on peut enlever qqles interactions quand on regroupe certaines modalités de TypeEPCI

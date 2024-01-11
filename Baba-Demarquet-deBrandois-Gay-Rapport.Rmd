@@ -35,7 +35,7 @@ Nous disposons du jeu de données suivant :
 data <- read.csv("Data-projetmodIA-2324.csv")
 ```
 
-```{r, eval=FALSE}
+```{r}
 summary(data)
 data[1,]
 ```
@@ -46,8 +46,7 @@ data[1,]
 # Analyse descriptive des données
 Dans un premier temps on extrait les données du fichier Data-projetmodIA-2324.csv. Puis on extrait les données quantitatives de ce jeu de données (les quantités de gaz). Puis on visualise globalement les données quantitatives brutes.
 ```{r,echo=T}
-Data<-read.csv('Data-projetmodIA-2324.csv')
-data_quant=Data[,c("nox_kg","so2_kg","pm10_kg","pm25_kg","co_kg","c6h6_kg","nh3_kg","ges_teqco2","ch4_t","co2_t","n2o_t")]
+data_quant=data[,c("nox_kg","so2_kg","pm10_kg","pm25_kg","co_kg","c6h6_kg","nh3_kg","ges_teqco2","ch4_t","co2_t","n2o_t")]
 data_quant=as.data.frame(data_quant)
 head(data_quant)
 ```
@@ -68,49 +67,49 @@ grid.arrange(g1,g2,g3,ncol=3)
 
 ```{r,eval=FALSE,echo=FALSE}
 #données brutes
-g1= ggplot(data = Data) + geom_histogram(aes(x = (nox_kg)))
-g2= ggplot(data = Data) + geom_histogram(aes(x = (so2_kg)))
-g3= ggplot(data = Data) + geom_histogram(aes(x = (pm10_kg)))
-g4= ggplot(data = Data) + geom_histogram(aes(x = (pm25_kg)))
-g5= ggplot(data = Data) + geom_histogram(aes(x = (co_kg)))
-g6= ggplot(data = Data) + geom_histogram(aes(x = (c6h6_kg)))
-g7= ggplot(data = Data) + geom_histogram(aes(x = (ges_teqco2)))
-g8= ggplot(data = Data) + geom_histogram(aes(x = (ch4_t)))
-g9= ggplot(data = Data) + geom_histogram(aes(x = (co2_t)))
-g10= ggplot(data = Data) + geom_histogram(aes(x = (n2o_t)))
-g11= ggplot(data = Data) + geom_histogram(aes(x = (nh3_kg)))
+g1= ggplot(data = data) + geom_histogram(aes(x = (nox_kg)))
+g2= ggplot(data = data) + geom_histogram(aes(x = (so2_kg)))
+g3= ggplot(data = data) + geom_histogram(aes(x = (pm10_kg)))
+g4= ggplot(data = data) + geom_histogram(aes(x = (pm25_kg)))
+g5= ggplot(data = data) + geom_histogram(aes(x = (co_kg)))
+g6= ggplot(data = data) + geom_histogram(aes(x = (c6h6_kg)))
+g7= ggplot(data = data) + geom_histogram(aes(x = (ges_teqco2)))
+g8= ggplot(data = data) + geom_histogram(aes(x = (ch4_t)))
+g9= ggplot(data = data) + geom_histogram(aes(x = (co2_t)))
+g10= ggplot(data = data) + geom_histogram(aes(x = (n2o_t)))
+g11= ggplot(data = data) + geom_histogram(aes(x = (nh3_kg)))
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
 ```{r,eval=FALSE,echo=FALSE}
 #Avec Scale
-g1= ggplot(data = Data) + geom_histogram(aes(x = scale(nox_kg)))
-g2= ggplot(data = Data) + geom_histogram(aes(x = scale(so2_kg)))
-g3= ggplot(data = Data) + geom_histogram(aes(x = scale(pm10_kg)))
-g4= ggplot(data = Data) + geom_histogram(aes(x = scale(pm25_kg)))
-g5= ggplot(data = Data) + geom_histogram(aes(x = scale(co_kg)))
-g6= ggplot(data = Data) + geom_histogram(aes(x = scale(c6h6_kg)))
-g7= ggplot(data = Data) + geom_histogram(aes(x = scale(ges_teqco2)))
-g8= ggplot(data = Data) + geom_histogram(aes(x = scale(ch4_t)))
-g9= ggplot(data = Data) + geom_histogram(aes(x = scale(co2_t)))
-g10= ggplot(data = Data) + geom_histogram(aes(x = scale(n2o_t)))
-g11= ggplot(data = Data) + geom_histogram(aes(x = scale(nh3_kg)))
+g1= ggplot(data = data) + geom_histogram(aes(x = scale(nox_kg)))
+g2= ggplot(data = data) + geom_histogram(aes(x = scale(so2_kg)))
+g3= ggplot(data = data) + geom_histogram(aes(x = scale(pm10_kg)))
+g4= ggplot(data = data) + geom_histogram(aes(x = scale(pm25_kg)))
+g5= ggplot(data = data) + geom_histogram(aes(x = scale(co_kg)))
+g6= ggplot(data = data) + geom_histogram(aes(x = scale(c6h6_kg)))
+g7= ggplot(data = data) + geom_histogram(aes(x = scale(ges_teqco2)))
+g8= ggplot(data = data) + geom_histogram(aes(x = scale(ch4_t)))
+g9= ggplot(data = data) + geom_histogram(aes(x = scale(co2_t)))
+g10= ggplot(data = data) + geom_histogram(aes(x = scale(n2o_t)))
+g11= ggplot(data = data) + geom_histogram(aes(x = scale(nh3_kg)))
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
 ```{r,eval=FALSE,echo=FALSE}
 #Avec scale(log)
-g1= ggplot(data = Data) + geom_histogram(aes(x = scale(log(nox_kg))))
-g2= ggplot(data = Data) + geom_histogram(aes(x = scale(log(so2_kg))))
-g3= ggplot(data = Data) + geom_histogram(aes(x = scale(log(pm10_kg))))
-g4= ggplot(data = Data) + geom_histogram(aes(x = scale(log(pm25_kg))))
-g5= ggplot(data = Data) + geom_histogram(aes(x = scale(log(co_kg))))
-g6= ggplot(data = Data) + geom_histogram(aes(x = scale(log(c6h6_kg))))
-g7= ggplot(data = Data) + geom_histogram(aes(x = scale(log(ges_teqco2))))
-g8= ggplot(data = Data) + geom_histogram(aes(x = scale(log(ch4_t))))
-g9= ggplot(data = Data) + geom_histogram(aes(x = scale(log(co2_t))))
-g10= ggplot(data = Data) + geom_histogram(aes(x = scale(log(n2o_t))))
-g11= ggplot(data = Data) + geom_histogram(aes(x = scale(log(nh3_kg))))
+g1= ggplot(data = data) + geom_histogram(aes(x = scale(log(nox_kg))))
+g2= ggplot(data = data) + geom_histogram(aes(x = scale(log(so2_kg))))
+g3= ggplot(data = data) + geom_histogram(aes(x = scale(log(pm10_kg))))
+g4= ggplot(data = data) + geom_histogram(aes(x = scale(log(pm25_kg))))
+g5= ggplot(data = data) + geom_histogram(aes(x = scale(log(co_kg))))
+g6= ggplot(data = data) + geom_histogram(aes(x = scale(log(c6h6_kg))))
+g7= ggplot(data = data) + geom_histogram(aes(x = scale(log(ges_teqco2))))
+g8= ggplot(data = data) + geom_histogram(aes(x = scale(log(ch4_t))))
+g9= ggplot(data = data) + geom_histogram(aes(x = scale(log(co2_t))))
+g10= ggplot(data = data) + geom_histogram(aes(x = scale(log(n2o_t))))
+g11= ggplot(data = data) + geom_histogram(aes(x = scale(log(nh3_kg))))
 grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
@@ -135,7 +134,7 @@ La visualisation de la figure ?? nous permet d'identifier rapidement les relatio
 Dans le jeu de données nous avons aussi des variables qualitatives comme le code epci, le lib_epci ou des infos sur les départements.
 
 ```{r,eval=T,echo=T}
-data_quali=Data[,c("code_epci","lib_epci","annee_inv","TypeEPCI","nomdepart")]
+data_quali=data[,c("code_epci","lib_epci","annee_inv","TypeEPCI","nomdepart")]
 table(data_quali[,c("nomdepart")])
 ```
 

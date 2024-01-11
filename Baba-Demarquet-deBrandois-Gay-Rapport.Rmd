@@ -8,6 +8,7 @@ output:
     toc : TRUE
     toc_depth : 2
     number_section : TRUE
+    fig_caption: yes
 header-includes:
    - \usepackage{dsfont}
    - \usepackage{color}
@@ -23,47 +24,63 @@ library(corrplot)
 library(FactoMineR)
 library(factoextra)
 library(gridExtra)
+library(MASS)
 ```
 
-
-
+\listoffigures
+\newpage
 
 # Introduction
 Le but de ce projet est d'étudier différents polluants mesurés par de nombreux EPCI d'Occitanie.\
-Nous disposons du jeu de données suivant :
-```{r}
+Nous disposons du jeu de données suivant : \texttt{Data-projetmodIA-2324.csv}.
+
+```{r, echo=FALSE}
 data <- read.csv("Data-projetmodIA-2324.csv")
 ```
 
-```{r}
-summary(data)
-data[1,]
-```
+Dans la suite de ce rapport, on utilise les notations suivantes :  
 
-- Notations :\
+- a  
+- b  
+- c  
 
 
 # Analyse descriptive des données
-Dans un premier temps on extrait les données du fichier Data-projetmodIA-2324.csv. Puis on extrait les données quantitatives de ce jeu de données (les quantités de gaz). Puis on visualise globalement les données quantitatives brutes.
-```{r,echo=T}
+On commence par interpréter les éléments jeu de données.\
+
+## Analyse unidiemensionnelle
+On s'intéresse dans un premier temps aux variables quantitatives du jeu de données (et en particulier aux émissions de polluants).\
+La figure \ref{fig:fig1} présente une visualisation de quelques variables quantitatives brutes.\
+
+```{r,echo=F,eval=T}
 data_quant=data[,c("nox_kg","so2_kg","pm10_kg","pm25_kg","co_kg","c6h6_kg","nh3_kg","ges_teqco2","ch4_t","co2_t","n2o_t")]
 data_quant=as.data.frame(data_quant)
+```
+
+```{r , echo=F,eval=F}
 head(data_quant)
 ```
 
-```{r,echo=TRUE,eval=TRUE,fig.cap="Boxplot des variables nox_kg,co_kg,so2_kg",fig.height=2}
+
+```{r fig1 ,echo=F,eval=TRUE,fig.cap="\\label{fig:fig1}Boxplot des variables nox_kg,co_kg,so2_kg",fig.height=1.5}
 g1=ggplot(data_quant)+geom_boxplot(aes(y = nox_kg))
 g2=ggplot(data_quant)+geom_boxplot(aes(y = co_kg))
 g3=ggplot(data_quant)+geom_boxplot(aes(y =so2_kg ))
 grid.arrange(g1,g2,g3,ncol=3)
 ```
 
-```{r,echo=TRUE,eval=TRUE,fig.cap="Histogramme de la variable co_kg en brute, scale et scale(log())",fig.height=4}
+On observe que ... (pas scale....)  \
+
+
+
+```{r fig2,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig2}Histogramme de la variable co_kg en brute, scale et scale(log())",fig.height=1.5}
 g1=ggplot(data_quant)+ geom_histogram(aes(x = (co_kg)),bins =20 )
 g2=ggplot(data_quant)+ geom_histogram(aes(x = scale(co_kg)),bins =20)
 g3=ggplot(data_quant)+ geom_histogram(aes(x = scale(log(co_kg))),bins =20)
 grid.arrange(g1,g2,g3,ncol=3)
 ```
+
+
 
 ```{r,eval=FALSE,echo=FALSE}
 #données brutes
@@ -114,22 +131,32 @@ grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
 
+On effectue une transformation des données car d'après les boxplots de la figure \ref{fig:fig1} on remarque une variance énorme de certaines données comme co_kg.
+En examinant l'histogramme des données quantitatives, on observe une distribution fortement asymétrique.
+On peut donc appliquer une log-transformation pour normaliser la distribution des données. \
+Certaines variables ont pour unité la tonne et d'autre le kg on peut donc scale les données.
+On peut visualiser l'interet de ces transformations grâce à la figure \ref{fig:fig2} avec la varibale co_kg. \
+Par la suite, on manipule les variables quantitatives transformées \texttt{scale(log())}. \
 
-On effectue une transformation des données car d'après les boxplots de la figure ?? on remarque une variance énorme de certaines données comme co_kg. En examinant l'histogramme des données quantitatives, on observe une distribution fortement asymétrique. On peut donc appliquer une log-transformation pour normaliser la distribution des données. Certaines variables ont pour unité la tonne et d'autre le kg on peut donc scale les données. On peut visualiser l'interet de ces transformations grâce à la figure ?? avec la varibale co_kg.
-Par la suite on scale log les données de la manière suivante.
-```{r,echo=T,eval=TRUE}
+
+```{r,echo=FALSE,eval=TRUE}
 data_quant_scaled <- scale(log(data_quant))
 data_scaled_df <- as.data.frame(data_quant_scaled)
 ```
 
+On étudie ensuite la corrélation entre les variables quantitatives.\
 
-```{r,echo=TRUE,eval=TRUE,fig.cap="Corrélation entre les variables",fig.height=4}
+```{r fig3,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig3}Corrélation entre les variables",fig.height=3}
 mat_cor <- cor(data_scaled_df)
 corrplot(mat_cor,method="ellipse")
 ```
-La visualisation de la figure ?? nous permet d'identifier rapidement les relations significatives entre nos variables. Les ellipses fortement allongées suggèrent une corrélation plus forte, tandis que les ellipses plus circulaires indiquent une corrélation plus faible. 
 
-## Statistiques decriptive des données qualitatives
+L'analyse de la figure \ref{fig:fig3} nous permet d'identifier rapidement les relations significatives entre nos variables. Les ellipses fortement allongées suggèrent une corrélation plus forte, tandis que les ellipses plus circulaires indiquent une corrélation plus faible. 
+
+
+
+
+## Analyse multidimensionnelle
 
 Dans le jeu de données nous avons aussi des variables qualitatives comme le code epci, le lib_epci ou des infos sur les départements.
 
@@ -143,21 +170,143 @@ ggplot(data=data_quali)+geom_bar(aes(x = TypeEPCI))
 ```
 
 
-## Analyse des données
+### Analyse en Compomantes Principales (ACP) des variables quantitatives
+On visualise les individus à partir des émissions de polluants.\
 
-### PCA
-On visualise les individue à partir des émissions de polluants.\
+
+```{r, eval=TRUE, echo=FALSE}
+library(ggfortify)
+df=data_quant_scaled
+pca_res <- prcomp(df)
+annee=data[,3]
+df_bis=cbind(annee,df)
+col_type=data[,c("TypeEPCI")]
+df_bis=cbind(col_type,df_bis)
+```
+
+```{r fig4, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig4}ACP des variables quantitatives",fig.height=2}
+g1 = autoplot(pca_res, data =df_bis, colour = 'col_type') #avec couleur pour chaque type
+g2 = autoplot(pca_res, data =df_bis, colour = 'annee') #couleur pour chaque année
+grid.arrange(g1,g2,ncol=2)
+```
+
+On observe sur la figure \ref{fig:fig4} que ... \
 
 
 
 
 ### Réduction de dimension (MCA)
 
+SUPERRRRRR
+
+
+
+
+
 
 # Classification des EPCI
+
 ## Clustering
 
+
+
+
+
 ## Analyse discriminante linéaire
+
+```{r, eval=TRUE, echo=FALSE}
+dlog = data[4:15]
+dlog[1:11] = data_quant_scaled
+data_mel = dlog[sample(nrow(dlog)), ]
+
+taille_train=round(0.7*nrow(data_mel))
+d_train=data_mel[1:taille_train,]
+d_test=data_mel[taille_train:nrow(data_mel),]
+
+color = dlog$TypeEPCI ;
+color[color=="CC"] = "black";
+color[color=="CA"] = "red";
+color[color=="CU"] = "green";
+color[color=="Metropole"] = "blue"
+
+lda_model <- lda(TypeEPCI ~ .,data=d_train)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+# Afficher les résultats de la LDA
+print(lda_model)
+```
+
+```{r, eval=TRUE, echo=FALSE}
+# Projeter les individus dans les coordonnées de la LDA
+lda_coordinates <- predict(lda_model)$x
+```
+
+```{r, eval=TRUE, echo=FALSE}
+# Afficher les individus dans le graphique
+plot(lda_coordinates[, c(1,2)], pch = 16, main = "LDA Plot",
+     xlab = "LD1", ylab = "LD2",col=color)
+
+plot(lda_coordinates[, c(1,3)], pch = 16, main = "LDA Plot",
+     xlab = "LD1", ylab = "LD3",col=color)
+
+plot(lda_coordinates[, c(2,3)], pch = 16, main = "LDA Plot",
+     xlab = "LD2", ylab = "LD3",col=color)
+# Ajouter une légende
+#legend("topright", legend = levels(data$Groupe), col = 1:2, pch = 16, title = "Groupes")
+```
+
+```{r, eval=TRUE, echo=FALSE}
+predictions <- predict(lda_model, newdata = d_test)
+table(vrai_valeur=d_test$TypeEPCI,prediction=predictions$class)
+```
+
+
+```{r, eval=TRUE, echo=FALSE}
+dlog2=dlog[1:11]
+dlog2$ch4_aux=data$ch4_t
+dlog2$ch4_t=data$ch4_t>1000
+
+data_mel2 <- dlog2[sample(nrow(dlog2)), ]
+
+taille_train=round(0.7*nrow(data_mel2))
+d_train=data_mel2[1:taille_train,]
+d_test=data_mel2[taille_train:nrow(data_mel2),]
+
+lda_model <- lda(ch4_t ~ .,data=d_train)
+
+color2 = dlog2$ch4_t
+color2[color2=="TRUE"] = "black";
+color2[color2=="FALSE"] = "red"
+```
+
+  
+```{r, eval=FALSE, echo=FALSE}
+# Afficher les résultats de la LDA
+print(lda_model)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+# Projeter les individus dans les coordonnées de la LDA
+lda_coordinates <- predict(lda_model)$x
+print(lda_coordinates)
+```
+
+```{r, eval=FALSE, echo=FALSE}
+vec=c(rep(1,nrow(d_train)))
+# Afficher les individus dans le graphique
+plot(lda_coordinates[, 1],vec, pch = 16, main = "LDA Plot",
+     xlab = "LD1", ylab = "y",col=color2)
+# Ajouter une légende
+#legend("topright", legend = levels(data$Groupe), col = 1:2, pch = 16, title = "Groupes")
+```
+
+```{r, eval=FALSE, echo=FALSE}
+predictions2 <- predict(lda_data, newdata = d_test)
+table(vrai_valeur=d_test$ch4_t,prediction=predictions2$class)
+```
+
+
 
 
 # EMS
@@ -172,7 +321,11 @@ $$
 Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \gamma_{ij} + \epsilon_{ij}
 $$
 
-```{r}
+**EXPLIQUER LA SIGNIFICATION DES TERMES DU MODELE**\
+
+
+
+```{r, eval=TRUE, echo=FALSE}
 dlog=data[4:15]
 data_quant=scale(log(data[4:14]))
 dlog[1:11]=data_quant
@@ -184,30 +337,54 @@ summary(anov2)
 
 -> Commentaire sur la valeur de R² obtenue.\
 
-On essaie de simplifier le modèle en enlevant les interactions.
+On essaie de simplifier le modèle en enlevant les interactions avec un test de sous-modèle :
+\begin{align*}
+  &\mathcal{H}_0 : \quad Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \epsilon_{ij}\\
+  &\mathcal{H}_1 : \quad Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \gamma_{ij} + \epsilon_{ij}
+\end{align*}
 
-```{r}
+
+```{r, eval=TRUE, echo=FALSE}
 anov_sans_int=lm(ges_teqco2 ~TypeEPCI + annee_inv, data=dlog)
+```
+
+```{r, eval=FALSE, echo=FALSE}
 anova(anov_sans_int,anov2)
 ```
 
-On obtient une p-value de `r round(anova(anov_sans_int,anov2)$Pr[2], digits=2)` > $0.05$.\
-On peut donc enlever les interactions :
+
+On obtient une p-value de `r round(anova(anov_sans_int,anov2)$Pr[2], digits=3)` > $0.05$.\
+On ne rejette pas l'hypothèse de nullité des interactions.\
+On garde donc le modèle suivant :
 $$
 Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \epsilon_{ij}
-$$
+$$\
 
-On essaie de simplifier le modèle en enlevant les variables non significatives.
+On essaie de simplifier le modèle en enlevant les variables non significatives (on fait 2 tests de sous-modèle) :
+\begin{align*}
+  &\mathcal{H}_0 : \quad Y_{ij} = \mu + \alpha_{i} + \epsilon_{ij}\\
+  &\mathcal{H}_1 : \quad Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \epsilon_{ij}\\
+  &\\
+  &\qquad \qquad \text{ et }\\
+  &\\
+  &\mathcal{H}_0 : \quad Y_{ij} = \mu + \beta_{j} + \epsilon_{ij}\\
+  &\mathcal{H}_1 : \quad Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \epsilon_{ij}
+\end{align*}
 
-```{r}
+
+
+```{r, eval=TRUE, echo=FALSE}
 anov_annee=lm(ges_teqco2 ~annee_inv, data=dlog)
 anov_type=lm(ges_teqco2 ~TypeEPCI, data=dlog)
+```
 
+```{r, eval=FALSE, echo=FALSE}
 anova(anov_annee,anov_sans_int)
 anova(anov_type,anov_sans_int)
 ```
 
-Pour le modèle dépendant uniquement du type d'EPCI, on obtient une p-value de `r round(anova(anov_type,anov_sans_int)$Pr[2], digits=2)` > $0.05$.\
+
+Pour le modèle dépendant uniquement du type d'EPCI, on obtient une p-value de `r round(anova(anov_type,anov_sans_int)$Pr[2], digits=3)` > $0.05$.\
 On peut donc enlever l'année dans le modèle :
 $$
 Y_{ij} = \mu + \alpha_{i} + \epsilon_{ij}
@@ -215,23 +392,23 @@ $$
 
 On essaie à nouveau de simplifier le modèle en enlevant les variables non significatives.
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 anova(lm(ges_teqco2 ~1, data=dlog),anov_type)
 ```
 
-On obtient cette fois une p-value de `r round(anova(lm(ges_teqco2 ~1, data=dlog),anov_type)$Pr[2], digits=2)` < $0.05$.\
+On obtient cette fois une p-value de `r round(anova(lm(ges_teqco2 ~1, data=dlog),anov_type)$Pr[2], digits=3)` < $0.05$.\
 On ne peut donc pas enlever le type d'EPCI dans le modèle.
 
 On vérifie finalement la cohérence du modèle retenu :
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 anova(anov_type,anov2)
 ```
 
-On obtient une p-value de `r round(anova(anov_type,anov2)$Pr[2], digits = 2)
+On obtient une p-value de `r round(anova(anov_type,anov2)$Pr[2], digits = 3)
 ` > $0.05$ donc le modèle est cohérent.
 On garde donc le modèle :
 
-```{r}
+```{r, eval=FALSE, echo=FALSE}
 summary(anov_type)
 ```
 
@@ -240,6 +417,9 @@ summary(anov_type)
 ### Régression linéaire
 
 ### ANCOVA
+
+
+
 
 ## Modèle linéaire généralisé
 

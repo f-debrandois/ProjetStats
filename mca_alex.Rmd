@@ -84,13 +84,10 @@ mca_result_3 <- MCA(data_mca_3, graph = FALSE)
 mca_result_4 <- MCA(data_mca_4, graph = FALSE)
 mca_result_5 <- MCA(data_mca_5, graph = FALSE)
 
-
-
+# Affichage des résultats
 plot(mca_result_3, axes = c(1, 2), choix = "ind",invisible='ind', habillage = "quali",title = "MCA avec découpage des données en 3 intervalles")
 plot(mca_result_4, axes = c(1, 2), choix = "ind",invisible='ind', habillage = "quali",title = "MCA avec découpage des données en 4 intervalles")
 plot(mca_result_5, axes = c(1, 2), choix = "ind",invisible='ind', habillage = "quali",title = "MCA avec découpage des données en 5 intervalles")
-
-
 ```
 
 L'analyse des résultats de la MCA révèle une structure significative lorsque les variables sont regroupées selon un découpage en trois intervalles. Dans ce scénario, les variables partageant le même découpage d'intervalles présentent un regroupement cohérent, suggérant une association claire entre ces catégories.

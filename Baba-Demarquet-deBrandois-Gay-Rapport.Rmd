@@ -197,11 +197,117 @@ On observe sur la figure \ref{fig:fig4} que ... \
 
 ### Réduction de dimension (MCA)
 
-SUPERRRRRR
+Dans cette partie, on cherche à effectuer une réduction de dimension pour les polluants et du type EPCI.
+Nous allons donc utiliser une MCA (Multiple Correspondance Analysis).
+Les polluants sont des variables quantitatvives nous avons donc besoin de discrétiser ces variables.
+Nous allons former un nombre fini d'intervals qui formeront les modalités des nouvelles variables qualitatives.
+Nous allons aussi retirer les valeurs aberrantes c'est-à-dire en-dehors des quantiles (voir boxplot) :
+En effet, la MCA est sensible aux valeurs extrêmes car elle vise à maximiser la variance des données.
+Les outliers, en raison de leur nature inhabituelle, peuvent influencer significativement la variance et ainsi biaiser les résultats de l'analyse.
 
 
 
+```{r, eval=TRUE, echo=FALSE}
+# Fonction pour retirer les outliers
+enlever_donnee_aber <- function(data_frame,columns) {
 
+  # Définir le facteur d'échelle interquartile (IQR)
+  iqr_factor <- 1.5
+
+  # Appliquer la règle des quantiles pour chaque colonne
+  for (col in columns) {
+    # Calculer les quantiles
+    q1 <- quantile(data_frame[[col]], 0.15)
+    q3 <- quantile(data_frame[[col]], 0.85)
+    # Calculer l'IQR
+    iqr <- q3 - q1
+    # Calculer les limites
+    lower_limit <- q1 - iqr_factor * iqr
+    upper_limit <- q3 + iqr_factor * iqr
+    # Supprimer les outliers
+    data_frame <- data_frame[data_frame[[col]] >= lower_limit & data_frame[[col]] <= upper_limit, ]
+  }
+  return(data_frame)
+}
+```
+
+
+Les données quantitatives sont enrichies en incluant la colonne avec la variable qualitative,
+puis les données quantitatives sont transformées en données qualitatives
+afin de réaliser une Analyse en Composantes Principales (MCA) à l'aide de FactoMineR.
+
+
+```{r, eval=TRUE, echo=FALSE}
+data_mca <- cbind(data_scaled_df,data$TypeEPCI) # Ajout de la colonne avec typeEPCI
+
+# Changement du nom de la nouvelle colonne 
+colnames(data_mca)[colnames(data_mca) == "Data$TypeEPCI"] <- "TypeEPCI"
+#On enlève les données aberrantes
+data_mca = enlever_donnee_aber(data_mca,colnames(data_mca)[-c(12)]) #on enlève juste la colonne des types EPCI car qualitative
+
+prepa_data_mca<-function(breaks,data_mca) {   
+  # Breaks ==Choix du nombre d'intervales de découpe des variables quantitatives
+
+  # Conversion des variables catégorielles en facteurs
+  labels <- letters[1:breaks]
+  for (col in names(data_mca)) {
+    if (is.numeric(data_mca[[col]])) {
+      data_mca[[paste0(col, "_discret")]] <- cut(data_mca[[col]], breaks = breaks,labels=labels)
+    }
+  }
+  data_mca=data_mca[,c(names(data_mca)[12:length(names(data_mca))])]
+  # Conversion des variables catégorielles en facteurs
+  data_mca <- as.data.frame(lapply(data_mca, as.factor))
+}
+data_mca_3=prepa_data_mca(3,data_mca)
+data_mca_4=prepa_data_mca(4,data_mca)
+data_mca_5=prepa_data_mca(5,data_mca)
+
+```
+
+
+Ensuite, nous appliquons l'Analyse en Composantes Principales 
+à l'aide de la bibliothèque factoMineR, en variant les intervalles de découpage 
+des données quantitatives en données qualitatives.
+
+
+```{r fig5, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig5}MCA avec découpage des données en 3, 4 et 5 intervalles",fig.height=3}
+# Réalisation de l'Analyse des Correspondances Multiples (MCA)
+mca_result_3 <- MCA(data_mca_3, graph = FALSE)
+mca_result_4 <- MCA(data_mca_4, graph = FALSE)
+mca_result_5 <- MCA(data_mca_5, graph = FALSE)
+
+# Affichage des résultats
+g1 = plot(mca_result_3, axes = c(1, 2), choix = "ind",invisible='ind', habillage = "quali",title = "MCA en 3 intervalles")
+g2 = plot(mca_result_4, axes = c(1, 2), choix = "ind",invisible='ind', habillage = "quali",title = "MCA en 4 intervalles")
+g3 = plot(mca_result_5, axes = c(1, 2), choix = "ind",invisible='ind', habillage = "quali",title = "MCA en 5 intervalles")
+grid.arrange(g1,g2,g3,ncol=3)
+```
+
+
+L'analyse des résultats de la MCA révèle une structure significative
+lorsque les variables sont regroupées selon un découpage en trois intervalles. 
+Dans ce scénario, les variables partageant le même découpage d'intervalles 
+présentent un regroupement cohérent, suggérant une association claire entre ces catégories.
+
+Les deux premiers axes principaux de l'Analyse en Composantes Principales (MCA) 
+capturent un pourcentage significatif de la variance totale, 
+avec des valeurs respectives de 27% et 17%. 
+Ces résultats indiquent que ces axes fournissent une représentation robuste 
+des relations entre les variables, soulignant des patterns structurés dans les données.
+
+Cependant, lorsqu'on effectue un découpage en un plus grand nombre d'intervalles, 
+les pourcentages associés aux axes principaux diminuent, 
+suggérant une dispersion accrue des données. 
+Cela peut être interprété comme une indication que le découpage en trois intervalles 
+offre une simplification pertinente, 
+condensant l'information tout en préservant la structure sous-jacente, 
+tandis qu'un découpage plus fin pourrait introduire du bruit ou de la complexité excessive.
+
+En résumé, l'analyse suggère que le découpage en trois intervalles 
+optimise la représentation des variables, 
+offrant une compréhension significative des relations dans les données, 
+tandis qu'un découpage plus fin pourrait conduire à une perte de clarté et à une dilution de l'information utile.
 
 
 # Classification des EPCI

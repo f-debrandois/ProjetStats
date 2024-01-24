@@ -18,6 +18,7 @@ library(ggplot2)
 library(corrplot)
 library(FactoMineR)
 library(factoextra)
+library(caret)
 library(gridExtra)
 
 data = read.csv("Data-projetmodIA-2324.csv")
@@ -59,6 +60,8 @@ plot(lda_model,col=color)
 
 predictions <- predict(lda_model, newdata = d_test)
 table(vrai_valeur=d_test$TypeEPCI,prediction=predictions$class)
+conf_mat=confusionMatrix(predictions$class,as.factor(d_test$TypeEPCI))
+print(conf_mat)
 
 
 ```
@@ -100,7 +103,9 @@ ggplot(df_lda,aes(x=mp,y=vec,color=ch4_t)) + geom_point(size=2)+ ggtitle("LDA Re
 plot(lda_model,col=color2)
 
 
-predictions2 <- predict(lda_data, newdata = d_test)
+predictions2 <- predict(lda_model, newdata = d_test)
 table(vrai_valeur=d_test$ch4_t,prediction=predictions2$class)
+conf_mat=confusionMatrix(predictions2$class,as.factor(d_test$ch4_t))
+print(conf_mat)
 
 ```

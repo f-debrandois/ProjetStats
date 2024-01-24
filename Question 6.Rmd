@@ -22,6 +22,15 @@ library(FactoMineR)
 library(factoextra)
 library(gridExtra)
 
+library(ellipse)
+library(leaps)
+library(glmnet)
+library(coefplot)
+
+library(ggfortify)
+library(plotly)   
+library(reshape2)
+
 data = read.csv("Data-projetmodIA-2324.csv")
 ```
 ```{r}
@@ -77,14 +86,19 @@ mod_anov=lm(ges_teqco2 ~TypeEPCI, data=d_train)
 pred=predict(mod_anov,d_test)
 resultat=data.frame(vrai_ges=d_test$ges_teqco2,prediction=pred,ecart=abs(d_test$ges_teqco2-pred),erreur_pourcentage=abs(d_test$ges_teqco2-pred)/abs(d_test$ges_teqco2))
 summary(resultat)
+taux_err=sum(resultat$ecart)/nrow(resultat)
+print(taux_err)
 
-absc=seq(-4, 4, length.out = nrow(d_test))
+p_err=sum(resultat$erreur_pourcentage)/nrow(resultat)
+print(p_err)
 
-g1= ggplot(resultat,aes(x=vrai_ges,y=prediction))+geom_point()
-g2= ggplot(resultat,aes(x=absc,y=vrai_ges))+geom_point()
-g3= ggplot(resultat,aes(x=absc,y=prediction))+geom_point()
+#absc=seq(-4, 4, length.out = nrow(d_test))
 
-grid.arrange(g1,g2,g3,ncol=2)
+#g1= ggplot(resultat,aes(x=vrai_ges,y=prediction))+geom_point()
+#g2= ggplot(resultat,aes(x=absc,y=vrai_ges))+geom_point()
+#g3= ggplot(resultat,aes(x=absc,y=prediction))+geom_point()
+
+#grid.arrange(g1,g2,g3,ncol=2)
 ```
 ```{r}
 dlog=data[4:15]
@@ -138,13 +152,12 @@ pred=predict(mod_anov,d_test)
 resultat=data.frame(vrai_ges=d_test$ges_teqco2,prediction=pred,ecart=abs(d_test$ges_teqco2-pred),erreur_pourcentage=abs(d_test$ges_teqco2-pred)/abs(d_test$ges_teqco2))
 summary(resultat)
 
-absc=seq(-4, 4, length.out = nrow(d_test))
+taux_err=sum(resultat$ecart)/nrow(resultat)
+p_err=sum(resultat$erreur_pourcentage)/nrow(resultat)
+print(taux_err)
+print(p_err)
 
-g1= ggplot(resultat,aes(x=vrai_ges,y=prediction))+geom_point()
-g2= ggplot(resultat,aes(x=absc,y=vrai_ges))+geom_point()
-g3= ggplot(resultat,aes(x=absc,y=prediction))+geom_point()
 
-grid.arrange(g1,g2,g3,ncol=2)
 ```
 Ancova:
 ```{r}
@@ -209,4 +222,52 @@ anova(bic_prec,ancov_modif_type)
 
 
 ```
-Alors, pour l'ancova on ramrque que l'on ne peut pas trop simplifier, pas du tout avec les variables classiques, et on peut enlever qqles interactions quand on regroupe certaines modalités de TypeEPCI
+Alors, pour l'ancova on remarque que l'on ne peut pas trop simplifier, pas du tout avec les variables classiques, et on peut enlever qqles interactions quand on regroupe certaines modalités de TypeEPCI
+
+```{r}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+bon_indice=c(7,9,11,12,13)
+dlog=dlog[bon_indice]
+dlog$ch4_t=data$ch4_t>1000
+
+summary(dlog)
+
+mlg_init=glm(ch4_t~.^2,data=dlog,family=binomial(link="logit"))
+summary(mlg_init)
+
+
+```
+```{r}
+mlg_sans_interact=glm(ch4_t~.,data=dlog,family=binomial(link="logit"))
+anova(mlg_sans_interact,mlg_init,test="Chisq")
+```
+```{r}
+library("MASS")
+mlg_bic=stepAIC(mlg_init,trace=F,direction="backward",k=log(nrow(dlog)))
+summary(mlg_bic)
+```
+```{r}
+anova(mlg_bic,mlg_init,test="Chisq")
+```
+
+```{r}
+taille_train=round(0.7*nrow(dlog))
+d_train=dlog[1:taille_train,]
+d_test=dlog[taille_train:nrow(dlog),]
+
+pred=predict(mlg_init,d_test)
+resultat=data.frame(vrai_res=d_test$ch4_t,prediction=pred)
+resultat$prediction=resultat$prediction >0.5
+resultat$erreur= abs(resultat$prediction-resultat$vrai_res)
+taux_erreur=sum(resultat$erreur)/nrow(resultat)
+summary(resultat)
+
+table(pred=resultat$prediction,vrai=resultat$vrai_res)
+print(taux_erreur)
+
+```
+

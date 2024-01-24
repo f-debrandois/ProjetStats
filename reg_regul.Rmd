@@ -1,0 +1,180 @@
+---
+title: "multi_linear_reg_alex"
+author: "alexandre"
+date: "2023-11-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## On importe les données et on les modifies
+```{r}
+library(corrplot)
+library(factoextra)
+library(FactoMineR)  
+Data<-read.csv('Data-projetmodIA-2324.csv')
+
+data_quant=Data[,c("nox_kg","so2_kg","pm10_kg","pm25_kg","co_kg","c6h6_kg","nh3_kg","ges_teqco2","ch4_t","co2_t","n2o_t")]
+data_quant_scaled <- scale(log(data_quant))
+data_scaled_df <- as.data.frame(data_quant_scaled)
+```
+
+
+
+
+## Modèle linéaire expliquant le gaz à effet de serre en fonction de tous les autres polluants
+
+
+
+```{r }
+mod_ges=lm(formula=ges_teqco2~.,data=data_scaled_df)
+summary(mod_ges)
+```
+
+## Selection des variables explicatives
+
+Nous allons maintenant simplifier le modèle en selctionnant les variables explicatives pertinentes
+```{r}
+library(leaps)
+```
+
+
+# Avec la méthode backward
+```{r}
+choixb<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="backward")
+summary(choixb)
+```
+
+```{r}
+plot(choixb,scale="bic")
+plot(choixb,scale="adjr2")
+plot(choixb,scale="Cp")
+```
+Pour la méthode backward nous pouvons simplfier
+
+# Avec la méthode forward
+
+```{r}
+choixf<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="forward")
+summary(choixf)
+```
+```{r}
+plot(choixf,scale="bic")
+plot(choixf,scale="adjr2")
+plot(choixf,scale="Cp")
+```
+
+
+
+Ainsi pour la méthode forward l'on peut retenir le modèle complet sans les variables
+
+# Validation des sous modèles
+Par la suite nous garderons le modèle suivant :
+(à ecrire complet sans les CO_kg et c6h6)
+
+```{r}
+reg_simpl=lm(formula=ges_teqco2~nox_kg+so2_kg+pm10_kg+pm25_kg+nh3_kg+ch4_t+co2_t+n2o_t,data=data_scaled_df)
+anova(reg_simpl,mod_ges)
+```
+
+En effectuant un test de Fisher de sous model on obtient une pvaleur <0.05 donc on rejette H0 et on nepeut pas simplifier le modèle on va donc plsu décortiquer et regarder le step aic
+```{r}
+mod_bic=stepAIC(mod_ges,trace=T,direction="backward",k=log(nrow(dlog)))
+summary(mod_bic)
+```
+
+```{r}
+autoplot(mod_ges,which=c(1,2,4),label.size=2)     
+```
+
+
+```{r}
+tildeY=scale(data_quant[,8],center=T,scale=T)
+tildeX=scale(data_quant[,-8],center=T,scale=T)
+
+lambda_seq<-10^(seq(-4,4,0.01))
+fitridge <- glmnet(tildeX,tildeY, alpha = 0, lambda = lambda_seq,family=c("gaussian"),intercept=F) # A completer
+summary(fitridge)
+```
+```{r}
+df=data.frame(lambda = rep(fitridge$lambda,ncol(tildeX)), theta=as.vector(t(fitridge$beta)),variable=rep(colnames(tildeX),each=length(fitridge$lambda)))
+g1 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
+  geom_line()+
+  theme(legend.position="bottom")+
+  scale_x_log10()
+ggplotly(g1)
+ridge_cv <- cv.glmnet(tildeX, tildeY, alpha = 0, lambda = lambda_seq,nfolds=10, type.measure=c("mse"),intercept=F)
+best_lambda <- ridge_cv$lambda.min
+best_lambda
+```
+```{r}
+g1=g1 + 
+  geom_vline(xintercept = best_lambda,linetype="dotted", color = "red")+
+  scale_x_log10()
+g1
+
+df2=data.frame(lambda=ridge_cv$lambda,MSE=ridge_cv$cvm,cvup=ridge_cv$cvup,cvlo=ridge_cv$cvlo)
+gmse<-ggplot(df2)+
+  geom_line(aes(x=lambda,y=MSE))+
+  geom_vline(xintercept = ridge_cv$lambda.min,col="red",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvup),col="blue",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvlo),col="blue",linetype="dotted")+
+  #xlim(c(0,ridge_cv$lambda.min+0.5))+
+  scale_x_log10()
+ggplotly(gmse)
+```
+```{r}
+extract.coef(ridge_cv,lambda = "lambda.min")
+```
+
+
+```{r}
+fitlasso <- glmnet(tildeX,tildeY, alpha = 1, lambda = lambda_seq,family=c("gaussian"),intercept=F)
+summary(fitlasso)
+
+df=data.frame(lambda = rep(fitlasso$lambda,ncol(tildeX)), theta=as.vector(t(fitlasso$beta)),variable=rep(colnames(tildeX),each=length(fitlasso$lambda)))
+g3 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
+  geom_line()+
+  theme(legend.position="bottom")+
+  scale_x_log10()
+ggplotly(g3)
+
+lasso_cv <- cv.glmnet(tildeX, tildeY, alpha = 1, lambda = lambda_seq,nfolds=10, type.measure=c("mse"),intercept=F) 
+best_lambda <-lasso_cv$lambda.min
+lambda1se <- lasso_cv$lambda.1se
+best_lambda
+
+g3=g3 + 
+  geom_vline(xintercept = best_lambda,linetype="dotted", color = "red")+
+  geom_vline(xintercept = lambda1se,linetype="dotted", color = "blue")+
+  scale_x_log10()
+ggplotly(g3)
+
+extract.coef(lasso_cv,lambda = "lambda.min")
+
+```
+
+```{r}
+fitEN <- glmnet(tildeX, tildeY, alpha = 0.5, lambda = lambda_seq, type.measure=c("mse"),intercept=F)
+df=data.frame(lambda = rep(fitEN$lambda,ncol(tildeX)), theta=as.vector(t(fitEN$beta)),variable=rep(c(colnames(tildeX)),each=length(fitEN$lambda)))
+g4 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
+  geom_line()+
+  theme(legend.position="bottom")+
+  scale_x_log10()
+EN_cv <- cv.glmnet(tildeX, tildeY, alpha = 0.5, lambda = lambda_seq, type.measure=c("mse"),intercept=F) 
+best_lambda <-EN_cv$lambda.min
+g4=g4 + geom_vline(xintercept = best_lambda,linetype="dotted", 
+                color = "red")
+ggplotly(g4)
+regusuel=  mod_ges# A COMPLETER
+df4=data.frame(x=rep(colnames(tildeX),4),
+               coef=c(as.vector(regusuel$coefficients)[-1],as.vector(coef(ridge_cv,s=ridge_cv$lambda.min)[-1]),as.vector(coef(lasso_cv)[-1]),as.vector(coef(EN_cv)[-1])),
+               reg=c(rep("reg.lin",ncol(tildeX)),rep("ridge",ncol(tildeX)),rep("lasso",ncol(tildeX)),rep("ElasticNet",ncol(tildeX))))
+
+g5=ggplot(df4)+
+  geom_point(aes(x=x,y=coef,col=reg))
+g5
+```
+

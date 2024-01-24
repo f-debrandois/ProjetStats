@@ -17,6 +17,7 @@ library(corrplot)
 library(FactoMineR)
 library(factoextra)
 library(gridExtra)
+library(leaflet)
 ```
 
 ```{r}
@@ -29,7 +30,6 @@ head(donnees_polluant)
 ```
 
 ```{r}
-
 # Liste des polluants
 polluants <- c("nox_kg", "so2_kg", "pm10_kg", "nh3_kg", "ges_teqco2", "ch4_t", "co2_t", "n2o_t")
 
@@ -39,18 +39,28 @@ summary(data_polluant)
 
 
 ```{r}
+# Sélectionner le polluant que vous souhaitez visualiser
+polluant <- "nox_kg"  # Remplacez par le polluant de votre choix
 
-library(ggmap)
-library(osmdata)
+# Créer une carte avec des marqueurs représentant la concentration du polluant
+carte_polluant <- leaflet(donnees_polluant) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    radius = 3,
+    lng = ~longit,
+    lat = ~latit,
+    popup = ~paste("EPCI: ", code_epci, "<br>", polluant, ": ", get(polluant))
+  )
 
-
-# Obtenir la carte de la région Occitanie
-occitanie_map <- get_map(location = getbb('Occitanie'), zoom = 7)
-
-# Créer le graphique de carte
-ggmap(occitanie_map) +
-  geom_point(data = data_polluant, aes(x = longit, y = latit, color = data_polluant[[polluant]]), size = 3) +
-  scale_color_gradient(low = "green", high = "red", name = "Concentration de nox_kg") +
-  labs(title = "Concentration d'oxyde d'azote (nox_kg) par EPCI en Occitanie")
-
+# Afficher la carte
+carte_polluant
 ```
+
+
+
+
+
+
+
+
+

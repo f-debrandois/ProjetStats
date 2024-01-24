@@ -25,6 +25,7 @@ library(FactoMineR)
 library(factoextra)
 library(gridExtra)
 library(MASS)
+library(leaflet)
 ```
 
 \listoffigures
@@ -312,7 +313,15 @@ tandis qu'un découpage plus fin pourrait conduire à une perte de clarté et à
 
 # Classification des EPCI
 
+On cherche à classer les EPCI en fonction de leurs émissions de polluants.\
+On utilise pour cela différentes méthodes de classification.\
+
 ## Clustering
+
+On met en place différents algorithmes de clustering :\
+
+
+**Blabla sur les méthodes de clustering**\
 
 
 

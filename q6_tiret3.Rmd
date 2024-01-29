@@ -1,0 +1,170 @@
+---
+title: "Q6_tiret3"
+author: "alexandre"
+date: "2024-01-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(reticulate)
+library(ggplot2)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+library(gridExtra)
+
+library(ellipse)
+library(leaps)
+library(glmnet)
+library(coefplot)
+
+library(ggfortify)
+#library(plotly)   
+library(reshape2)
+
+data = read.csv("Data-projetmodIA-2324.csv")
+```
+
+```{r}
+enlever_donnee_aber <- function(data_frame,columns) {
+# Définir le facteur d'échelle interquartile (IQR)
+iqr_factor <- 1.5
+# Appliquer la règle des quantiles pour chaque colonne
+for (col in columns) {
+# Calculer les quantiles
+q1 <- quantile(data_frame[[col]], 0.15)
+q3 <- quantile(data_frame[[col]], 0.85)
+# Calculer l'IQR
+iqr <- q3 - q1
+# Calculer les limites
+lower_limit <- q1 - iqr_factor * iqr
+upper_limit <- q3 + iqr_factor * iqr
+# Supprimer les outliers
+data_frame <- data_frame[data_frame[[col]] >= lower_limit & data_frame[[col]] <= upper_limit, ]
+}
+return(data_frame)
+}
+```
+
+# On récupère les données et on garde juste un tableau avec les variables ammoniac, protoxyde d'azote, le type d'EPCI et l'année
+
+```{r}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+bon_indice=c(7,9,11,12,13)
+dlog=dlog[bon_indice]
+summary(dlog)
+
+```
+
+```{r}
+dlog=enlever_donnee_aber(dlog,colnames(dlog))
+
+
+```
+
+**Modèle avec intéraction**
+
+On va maintenant chercher un modèle expliquant l'émission de méthane en fonction de l'amoniac, le protoxyde d'azote, le type D'EPCI et l'année.\
+Dans un premier temps on va considérer le modèle avec intéraction suivant :
+
+$$
+\text{ch4}_i = \theta_0 + \theta_1 \times \text{nh3}_i + \theta_2 \times \text{n2o}_i + \theta_3 \times 1_{\text{TypeEPCICC}_i} + \theta_4 \times 1_{\text{TypeEPCICU}_i} + \theta_5 \times 1_{\text{TypeEPCIMetropole}_i} + \theta_6 \times \text{annee}_i \\
++ \theta_7 \times \text{nh3}_i \times \text{n2o}_i + \theta_8 \times \text{nh3}_i \times 1_{\text{TypeEPCICC}_i} + \theta_9 \times \text{nh3}_i \times 1_{\text{TypeEPCICU}_i} + \theta_{10} \times \text{nh3}_i \times 1_{\text{TypeEPCIMetropole}_i} + \theta_{11} \times \text{nh3}_i \times \text{annee}_i \\
++ \theta_{12} \times \text{n2o}_i \times 1_{\text{TypeEPCICC}_i} + \theta_{13} \times \text{n2o}_i \times 1_{\text{TypeEPCICU}_i} + \theta_{14} \times \text{n2o}_i \times 1_{\text{TypeEPCIMetropole}_i} + \theta_{15} \times \text{n2o}_i \times \text{annee}_i \\
++ \theta_{16} \times 1_{\text{TypeEPCICC}_i} \times \text{annee}_i + \theta_{17} \times 1_{\text{TypeEPCICU}_i} \times \text{annee}_i + \theta_{18} \times 1_{\text{TypeEPCIMetropole}_i} \times \text{annee}_i
+$$
+
+```{r}
+ancov= lm(ch4_t ~ .^2, data=dlog)
+summary(ancov)
+```
+
+On va maintenant comparer ce modèle avec intéraction au modèle sans intéractions puis utiliser la fonction anova pour comparer nos deux modèles.
+
+```{r}
+ancov_sans_interact=lm(ch4_t ~ ., data=dlog)
+anova(ancov_sans_interact,ancov)
+```
+
+On retrouve une p-valeur \<\<0.05 donc on ne peut *pas simplifier* le modèle en enlevant les interactions (au risque 5%).
+
+On va maintenant chercher à simplifier le modèle avec intéraction au maximum.
+
+On va utiliser la bibliothèque "MASS" pour effectuer une sélection de modèle basée sur le critère AIC en utilisant la fonction `stepAIC()`. Plus précisément, il effectue une sélection de modèle pas à pas dans le sens inverse (backward), ce qui signifie qu'il commence par un modèle complet (incluant toutes les variables explicatives) puis retire séquentiellement les variables qui n'améliorent pas la qualité du modèle selon le critère AIC. Le résultat est stocké dans l'objet `modselect_aic`, qui contient le modèle sélectionné avec la meilleure performance selon le critère AIC.
+
+```{r}
+library("MASS")
+modselect_aic=stepAIC(ancov,trace=T,direction="backward")
+```
+
+On a obtient que le modèle minimisant le AIC est le modèle complet sans selection des variables.
+
+```{r}
+  modselect_bic=stepAIC(ancov,trace=T,direction="backward",k=log(nrow(dlog)))
+```
+
+Avec le critère bic, le modèle simplifié est celui avec les variables suivantes :
+
+-   nh3_kg
+-   n2o_t
+-   TypeEPCI
+-   annee_inv
+-   Les interactions entre nh3_kg et n2o_t, ainsi qu'entre nh3_kg et TypeEPCI.
+
+$$ \text{ch4}_i = \theta_0 + \theta_1 \times \text{nh3}_i + \theta_2 \times \text{n2o}_i + \theta_3 \times \text{TypeEPCICC}_i + \theta_4 \times \text{TypeEPCICU}_i + \theta_5 \times \text{TypeEPCIMetropole}_i + \theta_6 \times \text{annee}_i + \theta_7 \times \text{nh3}_i \times \text{n2o}_i + \theta_8 \times \text{nh3}_i \times \text{TypeEPCICC}_i + \theta_9 \times \text{nh3}_i \times \text{TypeEPCICU}_i + \theta_{10} \times \text{nh3}_i \times \text{TypeEPCIMetropole}_i $$
+
+On va maintenant comparer l'ajustement du modèle sélectionné (modselect_bic) avec celui du modèle initial (ancov) pour déterminer si la différence dans leur performance est significative.
+
+```{r}
+anova(modselect_bic,ancov)
+```
+
+On obtient une pvaleur \< 0.05 ce qui indique que l'on peut pas simplifier le modèle avec le modèle sélectionné avec le critère bic.
+
+```{r}
+
+model_bic_precedent=lm(ch4_t ~ nh3_kg + n2o_t + TypeEPCI + annee_inv + nh3_kg:n2o_t + 
+    nh3_kg:TypeEPCI + n2o_t:TypeEPCI + n2o_t:annee_inv,data=dlog)
+anova(model_bic_precedent,ancov)
+```
+
+```{r}
+nv_type=dlog$TypeEPCI; nv_type[nv_type=="CU"]="Metr_CU";  nv_type[nv_type=="Metropole"]="Metr_CU"
+
+dlog2=dlog
+dlog2$TypeEPCI=nv_type
+
+ancov_modif_type= lm(ch4_t ~ .^2, data=dlog2)
+summary(ancov_modif_type)
+
+```
+
+```{r}
+ancov_modif_type_sans_interact=lm(ch4_t ~ ., data=dlog2)
+anova(ancov_modif_type_sans_interact,ancov_modif_type)
+```
+
+```{r}
+modselect_bic_v2=stepAIC(ancov_modif_type,trace=T,direction="backward",k=log(nrow(dlog2)))
+```
+
+```{r}
+anova(modselect_bic_v2,ancov_modif_type)
+
+bic_prec=lm(ch4_t ~ nh3_kg + n2o_t + TypeEPCI + annee_inv + nh3_kg:n2o_t + 
+    nh3_kg:TypeEPCI + nh3_kg:annee_inv + n2o_t:TypeEPCI + n2o_t:annee_inv, data=dlog2)
+
+anova(bic_prec,ancov_modif_type)
+
+
+```
+
+Alors, pour l'ancova on remarque que l'on ne peut pas trop simplifier, pas du tout avec les variables classiques, et on peut enlever qqles interactions quand on regroupe certaines modalités de TypeEPCI

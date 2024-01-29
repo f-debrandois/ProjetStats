@@ -99,13 +99,6 @@ print(taux_err)
 p_err=sum(resultat$erreur_pourcentage)/nrow(resultat)
 print(p_err)
 
-#absc=seq(-4, 4, length.out = nrow(d_test))
-
-#g1= ggplot(resultat,aes(x=vrai_ges,y=prediction))+geom_point()
-#g2= ggplot(resultat,aes(x=absc,y=vrai_ges))+geom_point()
-#g3= ggplot(resultat,aes(x=absc,y=prediction))+geom_point()
-
-#grid.arrange(g1,g2,g3,ncol=2)
 ```
   Nous vérifions le modèle que nous avons obtenu en faisant un peu de prédiction. Pour cela, on crée le modèle sur 70% des données, et on essaye de prédire la valeur du gaz à effet de serre sur les 30% restants. Les résultats obtenus montrent un écart moyen entre la réalité et la prédiction, soit un écart moyen de 13,15%.
 
@@ -237,16 +230,16 @@ Alors, pour l'ancova on remarque que l'on ne peut pas trop simplifier, pas du to
 
 
 
-###MLG:
+### MLG:
 
 Nous avons vu différents modèles linéaires pour essayer d'expliquer les variables, nous allons maintenant voir un modèle linéaire généralisé. Nous allons expliquer une variable binaire, à savoir le dépassement d’émission de méthane de 1000 t par an, par des variables qualitatives et quantitatives. Nous allons donc faire une régression logistique. Considérons le modèle suivant: 
 
-$$
+
 \begin{align*}
-  & dep_i \sim \mathcal{B(\pi_i)}, \text{avec } dep_i \perp\!\!\!\perp \forall i\\
-  & \pi_i = \theta_0+\theta_1 nh3kg_i + \theta_2 n2ot_i+ \sum_{j \in T} \beta_j \mathbb{1}\{TypeEPCI_i = j\} + \sum_{a=2015}^{2019} \alpha_a \mathbb{1}\{annee_i = a\}
+  &dep_i \sim \mathcal{B(\pi_i)}, \text{avec } dep_i \perp\!\!\!\perp \forall i\\
+  &\pi_i = \theta_0+\theta_1 nh3kg_i + \theta_2 n2ot_i+ \sum_{j \in T} \beta_j \mathbb{1}\{TypeEPCI_i = j\} + \sum_{a=2015}^{2019} \alpha_a \mathbb{1}\{annee_i = a\}
 \end{align*}
-$$
+
   
   
 

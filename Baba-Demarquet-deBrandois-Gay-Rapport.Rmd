@@ -208,7 +208,7 @@ Le deuxième axe est une combinaison linéaire de...
 
 On a également le pourcentage de variance expliquée par chaque axe à la figure \ref{fig:fig5}.\
 
-```{r fig5, eval=TRUE, echo=FALSE, fig.cap="\\label{fig:fig5}Pourcentage de variance expliquée par chaque axe",fig.height=2}
+```{r fig5, eval=TRUE, echo=FALSE, fig.cap="\\label{fig:fig5}Pourcentage de variance expliquée par chaque axe",fig.height=2.5}
 fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 50))
 ```
 

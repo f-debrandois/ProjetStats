@@ -44,12 +44,11 @@ data <- read.csv("Data-projetmodIA-2324.csv")
 Dans la suite de ce rapport, on utilise les notations suivantes :  
 
 - a  
-- b  
-- c  
 
 
 # Analyse descriptive des données
 On commence par interpréter les éléments jeu de données.\
+Il est composé de différentes observations de polluants ainsi que la date et le lieu de l'observation.
 
 ## Analyse unidiemensionnelle
 On s'intéresse dans un premier temps aux variables quantitatives du jeu de données (et en particulier aux émissions de polluants).\
@@ -72,7 +71,10 @@ g3=ggplot(data_quant)+geom_boxplot(aes(y =so2_kg ))
 grid.arrange(g1,g2,g3,ncol=3)
 ```
 
-On observe que ... (pas scale....)  \
+On observe une très grande variance de certaines données comme co_kg. 
+En observant l'histogramme des données quantitatives, on observe une distribution fortement asymétrique.
+Ainsi, si l'on souhaite effectuer des analyses sur ces données (comme par exemple une analyse en composante principales), nos résultats seront biaisés par la variance et l'asymétrie des données.
+On transforme donc les données, comme présenté à la figure suivante.
 
 
 
@@ -134,18 +136,16 @@ grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
 
-On effectue une transformation des données car d'après les boxplots de la figure \ref{fig:fig1} on remarque une variance énorme de certaines données comme co_kg.
-En examinant l'histogramme des données quantitatives, on observe une distribution fortement asymétrique.
-On peut donc appliquer une log-transformation pour normaliser la distribution des données. \
-Certaines variables ont pour unité la tonne et d'autre le kg on peut donc scale les données.
-On peut visualiser l'interet de ces transformations grâce à la figure \ref{fig:fig2} avec la varibale co_kg. \
+La transformation la plus adaptée est la transformation $\texttt{scale(log())}$ :
+Elle de mettre les données à la même échelle et de réduire l'asymétrie des données pour avoir une distribution plus proche d'une loi normale.\
 Par la suite, on manipule les variables quantitatives transformées \texttt{scale(log())}. \
-
 
 ```{r,echo=FALSE,eval=TRUE}
 data_quant_scaled <- scale(log(data_quant))
 data_scaled_df <- as.data.frame(data_quant_scaled)
 ```
+
+
 
 On étudie ensuite la corrélation entre les variables quantitatives.\
 
@@ -160,39 +160,75 @@ L'analyse de la figure \ref{fig:fig3} nous permet d'identifier rapidement les re
 
 
 ## Analyse multidimensionnelle
+A partir de notre jeu de données, on va chercher à résumer l'information en un nombre de variables synthétiques plus faible.\
+On effectue pour cela deux types d'analyses : 
+une analyse en composante principale (ACP) et une analyse en composante multiple (MCA).\
 
-Dans le jeu de données nous avons aussi des variables qualitatives comme le code epci, le lib_epci ou des infos sur les départements.
 
-```{r,eval=T,echo=T}
+```{r,eval=F,echo=F}
 data_quali=data[,c("code_epci","lib_epci","annee_inv","TypeEPCI","nomdepart")]
 table(data_quali[,c("nomdepart")])
 ```
 
-```{r,eval=T,echo=T}
+```{r,eval=F,echo=F}
 ggplot(data=data_quali)+geom_bar(aes(x = TypeEPCI))
 ```
 
 
 ### Analyse en Compomantes Principales (ACP) des variables quantitatives
-On visualise les individus à partir des émissions de polluants.\
+On s'interesse aux variables quantitatives (émissions de polluants).\
+On cherche à visualiser les individus dans un espace de dimension réduite. Nous effectuons donc une ACP sur les variables quantitatives.\
 
 
 ```{r, eval=TRUE, echo=FALSE}
 df=data_quant_scaled
 pca_res <- prcomp(df)
-annee=data[,3]
-df_bis=cbind(annee,df)
-col_type=data[,c("TypeEPCI")]
-df_bis=cbind(col_type,df_bis)
+annee=as.factor(data$annee_inv)
+type=as.factor(data$TypeEPCI)
 ```
 
-```{r fig4, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig4}ACP des variables quantitatives",fig.height=2}
-g1 = autoplot(pca_res, data =df_bis, colour = 'col_type') #avec couleur pour chaque type
-g2 = autoplot(pca_res, data =df_bis, colour = 'annee') #couleur pour chaque année
+On affiche dans un premier temps le cercle des corrélations.\
+
+```{r fig4, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig4}Cercle des corrélations",fig.height=3}
+g1 = fviz_pca_var(pca_res, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Évite le chevauchement des étiquettes
+)
+g2 = fviz_pca_var(pca_res, col.var = "contrib",
+             axes = c(2, 3),
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Évite le chevauchement des étiquettes
+)
 grid.arrange(g1,g2,ncol=2)
 ```
 
-On observe sur la figure \ref{fig:fig4} que ... \
+Le premier axe est une combinaison linéaire de...
+Le deuxième axe est une combinaison linéaire de...
+
+
+On a également le pourcentage de variance expliquée par chaque axe à la figure \ref{fig:fig5}.\
+
+```{r fig5, eval=TRUE, echo=FALSE, fig.cap="\\label{fig:fig5}Pourcentage de variance expliquée par chaque axe",fig.height=2}
+fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 50))
+```
+
+On retrouve bien le fait que les deux premiers axes expliquent presque 90% de la variance.\
+
+On visualise les individus dans le plan factoriel des deux premiers axes principaux en fonction de l'année puis du type d'EPCI.\
+
+```{r fig6, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig6}ACP des variables quantitatives",fig.height=2}
+g1 = fviz_pca_ind(pca_res,
+                  col.ind = annee,
+                  palette = "jco",
+                  addEllipses = TRUE)
+g2 = fviz_pca_ind(pca_res,
+                  col.ind = type,
+                  palette = "jco",
+                  addEllipses = TRUE)
+grid.arrange(g1,g2,ncol=2)
+```
+
+On observe sur la figure \ref{fig:fig6} que ... \
 
 
 
@@ -200,9 +236,11 @@ On observe sur la figure \ref{fig:fig4} que ... \
 ### Réduction de dimension (MCA)
 
 Dans cette partie, on cherche à effectuer une réduction de dimension pour les polluants et du type EPCI.
-Nous allons donc utiliser une MCA (Multiple Correspondance Analysis).
+Nous allons donc utiliser une MCA (Multiple Correspondance Analysis).\
 Les polluants sont des variables quantitatvives nous avons donc besoin de discrétiser ces variables.
-Nous allons former un nombre fini d'intervals qui formeront les modalités des nouvelles variables qualitatives.
+Nous allons former un nombre fini d'intervals qui formeront les modalités des nouvelles variables qualitatives.\
+**Parler des intervalles de discrétisation**\
+
 Nous allons aussi retirer les valeurs aberrantes c'est-à-dire en-dehors des quantiles (voir boxplot) :
 En effet, la MCA est sensible aux valeurs extrêmes car elle vise à maximiser la variance des données.
 Les outliers, en raison de leur nature inhabituelle, peuvent influencer significativement la variance et ainsi biaiser les résultats de l'analyse.
@@ -273,7 +311,7 @@ Ensuite, nous appliquons l'Analyse en Composantes Principales
 des données quantitatives en données qualitatives.
 
 
-```{r fig5, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig5}MCA avec découpage des données en 3, 4 et 5 intervalles",fig.height=3}
+```{r fig7, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig7}MCA avec découpage des données en 3, 4 et 5 intervalles",fig.height=3}
 # Réalisation de l'Analyse des Correspondances Multiples (MCA)
 mca_result_3 <- MCA(data_mca_3, graph = FALSE)
 mca_result_4 <- MCA(data_mca_4, graph = FALSE)

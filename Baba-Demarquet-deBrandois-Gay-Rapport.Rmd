@@ -769,6 +769,105 @@ summary(anov_type)
 
 
 ## Modèle linéaire généralisé
+Nous allons maintenant modéliser le dépassement d'émission de méthane de 1000 tonnes par an en fonction en fonction de l’ammoniac, le protoxyde d’azote, le type d’EPCI et l’année.
+On exprime une variable binaire donc le modèle à utiliser est une régression logistique.
+
+$\forall i \in \{1,\dots,n\}$ :
+\begin{itemize}
+  \item $dep_i$ : variable binaire valant 1 si le taux d'émission de méthane dépasse les 1000 tonnes par an, et 0 sinon.
+  \item $nh3kg_i$ : taux d'émission d'ammoniac en kg/hab
+  \item $n2ot_i$ : taux d'émission de protoxyde d'azote en kg/hab
+  \item $TypeEPCI_i$ : type d'EPCI
+  \item $annee_i$ : année
+  \item $T = \{CC,CA,CU,Metropole\}$ : ensemble des types d'EPCI
+  \item $A = \{2015,2016,2017,2018,2019\}$ : ensemble des années
+\end{itemize}
+
+On modélise la probabilité de dépassement de 1000 tonnes par an par le modèle suivant :
+$$
+\text{(Mod4) : }\begin{cases}
+  dep_i \sim \mathcal{B}(\pi_i)\\
+   \\
+  \pi_i = \theta_0+\theta_1 nh3kg_i + \theta_2 n2ot_i+ \underset{j \in T}{\sum} \beta_j \mathds{1}_{\{TypeEPCI_i = j\}} + \underset{a \in A}{\sum} \alpha_a \mathds{1}_{\{annee_i = a\}}
+\end{cases}
+$$
+
+```{r,echo=FALSE}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+bon_indice=c(7,9,11,12,13)
+dlog=dlog[bon_indice]
+dlog$ch4_t=data$ch4_t>1000
+
+#summary(dlog)
+
+mlg_init=glm(ch4_t~.^2,data=dlog,family=binomial(link="logit"))
+summary(mlg_init)
+```
+
+
+
+```{r,echo=FALSE,eval=TRUE}
+mlg_sans_interact=glm(ch4_t~.,data=dlog,family=binomial(link="logit"))
+anova(mlg_sans_interact,mlg_init,test="Chisq")
+```
+
+
+```{r, echo=FALSE,include=FALSE}
+library("MASS")
+mlg_bic=stepAIC(mlg_init,trace=F,direction="backward",k=log(nrow(dlog)))
+summary(mlg_bic)
+```
+
+
+```{r,echo=FALSE,include=FALSE}
+anova(mlg_bic,mlg_init,test="Chisq")
+```
+
+
+Nous avons essayé de simplifier ce modèle, en enlevant les intéractions, mais nous avons rejeté l'hypothèse car nous obtenions un p-valeur trop petite.
+Nous avons également essayé de mettre en place une méthode backward pour trouver un sous-modèle acceptable, mais encore une fois nous avons obtenu un p-valeur trop petite, et nous avons rejeté le sous modèle.
+Ce modèle ne semble donc pas pouvoir se simplifier, et nous allons tester son efficaité en faisant de la prédiction. 
+Nous prenons 70% de l'échantillon pour faire le modèle, et nous testons sur les 30% restants. 
+
+
+```{r,echo=FALSE}
+library(caret)
+
+taille_train=round(0.7*nrow(dlog))
+d_train=dlog[1:taille_train,]
+d_test=dlog[taille_train:nrow(dlog),]
+
+pred=predict(mlg_init,d_test)
+resultat=data.frame(vrai_res=d_test$ch4_t,prediction=pred)
+resultat$prediction=resultat$prediction >0.5
+resultat$erreur= abs(resultat$prediction-resultat$vrai_res)
+taux_erreur=sum(resultat$erreur)/nrow(resultat)
+conf_mat=confusionMatrix(as.factor(resultat$prediction),as.factor(resultat$vrai_res))
+```
+
+
+```{r fig20,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig20}Prédiction sur le taux de méthane",fig.height=3}
+heatmap_data <- as.data.frame(conf_mat$table)
+
+ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = sprintf("%d", Freq)), vjust = 1) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Matrice de Confusion",
+       x = "Vraie Valeur",
+       y = "Prédiction")
+```
+
+Nous obtenons la figure \ref{fig:fig20}.
+Ce résultat a un taux de précision de `r round(as.numeric(conf_mat$overall[1]), digits=3)`.
+C'est très correct, car avec la LDA nous obtenions un taux de précision de `r round(as.numeric(conf_mat$overall[1]), digits=3)`.
+Ainsi, en ne gardant que certaines variables, nous obtenons un score plutôt proche.
+On en déduit que l’ammoniac, le protoxyde d’azote, le type d’EPCI et l’année explique bien le dépassement d’émission de méthane de 1000 t par an.
+
 
 
 # Conclusion

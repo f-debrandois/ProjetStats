@@ -30,6 +30,7 @@ library(ggfortify)
 library(caret)
 library(clusterSim)
 library(mclust)
+library(leaps)
 ```
 
 \listoffigures
@@ -1065,9 +1066,213 @@ Nous vérifions le modèle que nous avons obtenu en faisant un peu de prédictio
 Pour cela, on crée le modèle sur 70% des données, et on essaye de prédire la valeur du gaz à effet de serre sur les 30% restants.
 Les résultats obtenus montrent un écart moyen entre la réalité et la prédiction, soit un écart moyen de `r round(p_err, digits=2)` %.
 
+
+
 ### Régression linéaire
 
+```{r,echo=FALSE,eval=TRUE}
+data_reg = enlever_donnee_aber(data_scaled_df,colnames(data_scaled_df))
+```
+
+__Modèle linéaire additif expliquant le gaz à effet de serre en fonction de tous les autres polluants__
+
+On a le modèle additif suivant que l'on peut ajuster sur R de la façon suivante :
+$$
+\begin{cases}
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{co\_kg}_i + \theta_6\text{c6h6\_kg}_i + \theta_7\text{nh3\_kg}_i +\theta_8 \text{ch4\_t}_i + \theta_9\text{co2\_t}_i + \theta_{10}\text{no2\_t}_i + \varepsilon_{i}\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
+
+```{r,echo=FALSE,eval=TRUE}
+mod_ges=lm(formula=ges_teqco2~.,data=data_scaled_df)
+summary(mod_ges)
+```
+
+Sur le résultat affiché, on obtient une p-valeur de `r round(summary(mod_ges)$coefficients[c("c6h6_kg"),4], digits=3)`pour la variable c6h6_kg,
+et une p-valeur de `r round(summary(mod_ges)$coefficients[c("co_kg"),4], digits=3)`pour la variable co_kg.
+Ces deux p-valeurs sont supérieures à 0.05, on ne rejette donc pas l'hypothèse de nullité des coefficients associés à ces deux variables.
+
+Il est à noter que le test de nullité pour certaines variables telles que c6h6_kg et co_kg présente une p-value supérieure à 0,05. Cela pourrait suggérer la possibilité de les exclure du modèle afin de le simplifier.  
+
+__Selection des variables explicatives__
+
+Nous allons maintenant simplifier le modèle en selctionnant les variables explicatives pertinentes
+
+* Avec la méthode backward
+On obtient les résultats suivants avec la méthode backward.  
+Sur R : $\texttt{regsubsets(ges\_teqco2\~.,data=data\_scaled\_df,nbest=1,nvmax=10,method="backward")}$
+```{r,echo=FALSE,eval=TRUE}
+choixb<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="backward")
+summary(choixb)
+```
+
+```{r fig56, echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig56}Sélection des variables explicatives en backward",fig.height=3}
+g1 = plot(choixb,scale="bic")
+g2 = plot(choixb,scale="adjr2")
+g3 = plot(choixb,scale="Cp")
+grid.arrange(g1,g2,g3,ncol=3)
+```
+
+En utilisant la méthode Backward, tous les critères conduisent à la même sélection de variables, celle pour laquelle nous avions formulé l'hypothèse précédemment lors des tests de nullité.
+
+Voici le modèle simplifié proposé avec la méthode backward:
+$$
+\begin{cases}
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{no2\_t}_i + \varepsilon_{i}\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
+
+
+* Avec la méthode forward
+
+Nous allons maintenant effectuer la même selection mais cette fois-ci avec la méthode forward pour vérifier la simplification possible du modèle. Et nous obtenons les résulats suivant avec les critères bic, Cp et R2.
+
+```{r,echo=FALSE,eval=TRUE}
+choixf<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="forward")
+summary(choixf)
+```
+
+```{r fig58, echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig58}Sélection des variables explicatives en forward",fig.height=3}
+g1 = plot(choixf,scale="bic")
+g2 = plot(choixf,scale="adjr2")
+g3 = plot(choixf,scale="Cp")
+grid.arrange(g1,g2,g3,ncol=3)
+```
+
+Les résultats obtenus à partir de tous les critères concordent avec ceux de la méthode backward pour simplifier le modèle en éliminant les variables Co et C6h6. Il est désormais essentiel de valider ce sous-modèle.
+
+
+* Validation du sous modèle
+
+Nous prévoyons de réaliser une analyse de variance (ANOVA) pour évaluer la performance du modèle simplifié par rapport au modèle complet.
+Cette comparaison nous permettra de déterminer si le modèle simplifié conserve une précision de prédiction similaire tout en étant plus parcimonieux.
+
+$$
+\mathcal{H}_0 : \quad \begin{cases}
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{n2o\_t}_i + \varepsilon_{i}\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+\qquad \text{ contre } \qquad
+\mathcal{H}_1 : \quad \begin{cases}
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{co\_kg}_i + \theta_6\text{c6h6\_kg}_i + \theta_7\text{nh3\_kg}_i +\theta_8 \text{ch4\_t}_i + \theta_9\text{co2\_t}_i + \theta_{10}\text{no2\_t}_i + \varepsilon_{i}\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
+
+
+```{r,echo=FALSE,eval=TRUE}
+reg_simpl=lm(formula=ges_teqco2~nox_kg+so2_kg+pm10_kg+pm25_kg+nh3_kg+ch4_t+co2_t+n2o_t,data=data_scaled_df)
+anova(reg_simpl,mod_ges)
+```
+
+La p-valeur obtenue est de `r round(anova(reg_simpl,mod_ges)$Pr[2], digits=3)` > 0.05. 
+On ne rejette donc pas $\mathcal{H}_0$ et on peut simplifier le modèle additif en un sous-modèle :
+
+$$
+\begin{cases}
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{n2o\_t}_i + \varepsilon_{i}\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
+
+
+
 ### ANCOVA
+
+Dans cette partie on va chercher à expliquer l’émission de méthane en fonction de l’ammoniac, du protoxyde d’azote, du type d’EPCI et de l’année.  
+
+```{r,eval=TRUE,echo=FALSE,include=FALSE}
+dlog=data[4:15]
+data_quant=data[4:14]
+data_quant=scale(log(data_quant))
+dlog[1:11]=data_quant
+dlog=data.frame(dlog,annee_inv=data$annee_inv)
+bon_indice=c(7,9,11,12,13)
+dlog=dlog[bon_indice]
+```
+
+
+**Modèle avec intéraction**
+
+Dans un premier temps on va considérer le modèle avec intéraction suivant :
+
+$$
+\begin{cases}
+  \text{ch4\_t}_i = \theta_0 + \theta_1 \text{nh3\_kg}_i + \theta_2 \text{n2o\_t}_i + \theta_3 \mathds{1}_{\{TypeEPCI_i = CC\}} + \theta_4 \mathds{1}_{\{TypeEPCI_i = CU\}} + \theta_5 \mathds{1}_{\{TypeEPCI_i = Metropole\}} + \theta_6 \text{annee}_i\\
+  + \gamma_1 \text{nh3\_kg}_i \text{n2o\_t}_i + \gamma_2 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = CC\}} + \dots\\
+  + \varepsilon_{i}\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
+
+$$
+\text{ch4}_i = \theta_0 + \theta_1 \times \text{nh3}_i + \theta_2 \times \text{n2o}_i + \theta_3 \times 1_{\text{TypeEPCICC}_i} + \theta_4 \times 1_{\text{TypeEPCICU}_i} + \theta_5 \times 1_{\text{TypeEPCIMetropole}_i} + \theta_6 \times \text{annee}_i \\
++ \theta_7 \times \text{nh3}_i \times \text{n2o}_i + \theta_8 \times \text{nh3}_i \times 1_{\text{TypeEPCICC}_i} + \theta_9 \times \text{nh3}_i \times 1_{\text{TypeEPCICU}_i} + \theta_{10} \times \text{nh3}_i \times 1_{\text{TypeEPCIMetropole}_i} + \theta_{11} \times \text{nh3}_i \times \text{annee}_i \\
++ \theta_{12} \times \text{n2o}_i \times 1_{\text{TypeEPCICC}_i} + \theta_{13} \times \text{n2o}_i \times 1_{\text{TypeEPCICU}_i} + \theta_{14} \times \text{n2o}_i \times 1_{\text{TypeEPCIMetropole}_i} + \theta_{15} \times \text{n2o}_i \times \text{annee}_i \\
++ \theta_{16} \times 1_{\text{TypeEPCICC}_i} \times \text{annee}_i + \theta_{17} \times 1_{\text{TypeEPCICU}_i} \times \text{annee}_i + \theta_{18} \times 1_{\text{TypeEPCIMetropole}_i} \times \text{annee}_i \varepsilon_{i}
+$$
+avec $\varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)$
+
+
+```{r,eval=TRUE,echo=FALSE}
+ancov= lm(ch4_t ~ .^2, data=dlog)
+summary(ancov)
+```
+
+On va maintenant comparer ce modèle avec intéraction au modèle sans intéractions puis utiliser la fonction anova pour comparer nos deux modèles.
+
+```{r,echo=TRUE,eval=TRUE}
+ancov_sans_interact=lm(ch4_t ~ ., data=dlog)
+anova(ancov_sans_interact,ancov)
+```
+
+
+On retrouve une p-valeur \<\<0.05 donc on ne peut *pas simplifier* le modèle en enlevant les interactions (au risque 5%).
+
+On va maintenant chercher à simplifier le modèle avec intéraction au maximum.
+
+On va utiliser la bibliothèque "MASS" pour effectuer une sélection de modèle basée sur le critère AIC en utilisant la fonction `stepAIC()`. Plus précisément, il effectue une sélection de modèle pas à pas dans le sens inverse (backward), ce qui signifie qu'il commence par un modèle complet (incluant toutes les variables explicatives) puis retire séquentiellement les variables qui n'améliorent pas la qualité du modèle selon le critère AIC. Le résultat est stocké dans l'objet `modselect_aic`, qui contient le modèle sélectionné avec la meilleure performance selon le critère AIC.
+
+```{r,echo=TRUE,eval=TRUE}
+library("MASS")
+modselect_aic=stepAIC(ancov,trace=T,direction="backward")
+```
+
+
+On a obtient que le modèle minimisant le AIC est le modèle complet sans selection des variables.
+
+```{r}
+  modselect_bic=stepAIC(ancov,trace=T,direction="backward",k=log(nrow(dlog)))
+```
+
+Avec le critère bic, le modèle simplifié est celui avec les variables suivantes :
+
+-   nh3_kg
+-   n2o_t
+-   TypeEPCI
+-   annee_inv
+-   Les interactions entre nh3_kg et n2o_t, ainsi qu'entre nh3_kg et TypeEPCI.
+
+$$ \text{ch4}_i = \theta_0 + \theta_1 \times \text{nh3}_i + \theta_2 \times \text{n2o}_i + \theta_3 \times \text{TypeEPCICC}_i + \theta_4 \times \text{TypeEPCICU}_i + \theta_5 \times \text{TypeEPCIMetropole}_i + \theta_6 \times \text{annee}_i + \theta_7 \times \text{nh3}_i \times \text{n2o}_i + \theta_8 \times \text{nh3}_i \times \text{TypeEPCICC}_i + \theta_9 \times \text{nh3}_i \times \text{TypeEPCICU}_i + \theta_{10} \times \text{nh3}_i \times \text{TypeEPCIMetropole}_i \varepsilon_{i}$$
+avec $\varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)$
+
+
+On va maintenant comparer l'ajustement du modèle sélectionné (modselect_bic) avec celui du modèle initial (ancov) pour déterminer si la différence dans leur performance est significative.
+
+```{r}
+anova(modselect_bic,ancov)
+```
+
+On obtient une pvaleur \< 0.05 ce qui indique que l'on peut pas simplifier le modèle avec le modèle sélectionné avec le critère bic.
+
+```{r}
+model_bic_precedent=lm(ch4_t ~ nh3_kg + n2o_t + TypeEPCI + annee_inv + nh3_kg:n2o_t + 
+    nh3_kg:TypeEPCI + n2o_t:TypeEPCI + n2o_t:annee_inv,data=dlog)
+anova(model_bic_precedent,ancov)
+```
+
 
 
 

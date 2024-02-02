@@ -3,6 +3,7 @@ title: "Projet d'étude de Statistiques"
 author: "Maxime Baba, Alexandre Demarquet, Félix de Brandois, Tristan Gay"
 institute : "INSA Toulouse / ENSEEIHT"
 date: "`r Sys.Date()`"
+always_allow_html: true
 output: 
   pdf_document :
     toc : TRUE
@@ -16,7 +17,7 @@ header-includes:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 library(reticulate)
 library(ggplot2)
@@ -31,6 +32,9 @@ library(caret)
 library(clusterSim)
 library(mclust)
 library(leaps)
+library(plotly)
+library(glmnet)
+library(coefplot)
 ```
 
 \listoffigures
@@ -39,14 +43,13 @@ library(leaps)
 # Introduction
 Le but de ce projet est d'étudier différents polluants mesurés par de nombreux EPCI d'Occitanie.\
 Nous disposons du jeu de données suivant : \texttt{Data-projetmodIA-2324.csv}.
+A travers ce compte-rendu, nous allons aborder ce jeu de données sous différents angles, allant de l'analyse descriptive des données à l'exploration des modèles prédictifs et explicatifs.
 
 ```{r, echo=FALSE}
 data <- read.csv("Data-projetmodIA-2324.csv")
 ```
 
-Dans la suite de ce rapport, on utilise les notations suivantes :  
 
-- a  
 
 
 # Analyse descriptive des données
@@ -206,8 +209,15 @@ g2 = fviz_pca_var(pca_res, col.var = "contrib",
 grid.arrange(g1,g2,ncol=2)
 ```
 
-Le premier axe est une combinaison linéaire de...
-Le deuxième axe est une combinaison linéaire de...
+Le premier axe est une combinaison linéaire de co_kg, co2_t, c6h6_kg, nox_kg, pm25_kg, ges_teqco2 et pm10_kg : 
+$$
+C_1 = \alpha_1 \text{co\_kg} + \alpha_2 \text{co2\_t} + \alpha_3 \text{c6h6\_kg} + \alpha_4 \text{nox\_kg} + \alpha_5 \text{pm25\_kg} + \alpha_6 \text{ges\_teqco2} + \alpha_7 \text{pm10\_kg} \quad \text{avec } \alpha_i > 0
+$$
+Le deuxième axe est une combinaison linéaire de n2o_t, nh3_kg et ch4_t : 
+$$
+C_2 = \beta_1 \text{n2o\_t} + \beta_2 \text{nh3\_kg} + \beta_3 \text{ch4\_t}\quad \text{avec } \beta_i < 0
+$$
+
 
 
 On a également le pourcentage de variance expliquée par chaque axe à la figure \ref{fig:fig5}.\
@@ -356,8 +366,8 @@ tandis qu'un découpage plus fin pourrait conduire à une perte de clarté et à
 
 # Classification des EPCI
 
-On cherche à classer les EPCI en fonction de leurs émissions de polluants.\
-On utilise pour cela différentes méthodes de classification.\
+On cherche à classer les EPCI en fonction de leurs émissions de polluants.  
+On utilise pour cela différentes méthodes de classification.
 
 ## Clustering
 
@@ -366,11 +376,10 @@ On met en place différents algorithmes de clustering :\
 
 
 ### Méthodes des k-means
-**Explication de la méthode des k-means**\
 
-On détermine combien de centres choisir en observant le comportement de l’inertie intraclasse en fonction du nombre de classes (k) :
+On détermine combien de centres choisir en observant le comportement de l’inertie intraclasse en fonction du nombre de classes $(k)$ :
 
-```{r fig8,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig8}Determination du nombre de clusters optimal",fig.height=3}
+```{r fig8,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig8}Determination du nombre de clusters optimal",fig.height=2, fig.width=5}
 # On détermine combien de centres choisir
 data_kmeans <- data_scaled_df
 data_kmeans <- enlever_donnee_aber(data_kmeans, colnames(data_kmeans))
@@ -390,9 +399,9 @@ ggplot(df,aes(x=K,y=Iintra))+geom_line()+geom_point()+xlab("Nombre de classes")+
 
 
 On observe un coude sur le graphe de l’inertie itntraclasse à partir de K = 5 classes.
-On choisit donc quatre d’après le critère des K-means, et on obtient ainsi le résultat suivant :
+On choisit donc 5 classes d’après le critère des K-means, et on obtient ainsi le résultat suivant :
 
-```{r fig9,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig9}K-means avec K=5",fig.height=3}
+```{r fig9,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig9}K-means avec K=5",fig.height=3, fig.width=5}
 # On choisit K = 5
 reskmeans <- kmeans(data_kmeans,centers=5,nstart =20)
 
@@ -411,11 +420,10 @@ fviz_pca_ind(pca_res)
 
 
 ### Critère de sélection Silhouette
-**Explication du critère de sélection Silhouette**\
 
 Toujours en faisant varier k, on extrait la moyenne des indices de silhouette de chaque cluster, afin d’obtenir le graphe suivant :
 
-```{r fig10,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig10}Critère de sélection Silhouette",fig.height=3}
+```{r fig10,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig10}Critère de sélection Silhouette",fig.height=2, fig.width=5}
 Silhou<-NULL
 for (k in 2:Kmax){
   aux<-silhouette(reskmeanscl[,k-1],daisy(data_kmeans))
@@ -430,19 +438,18 @@ ggplot(df,aes(x=K,y=Silhouette))+
   geom_line()+theme(legend.position = "bottom")
 ```
 
-On choisit le pic du graphe de Silhouette qui est atteint pour K = 2.
-La méthode des K-means proposait K = 4 clusters.
+On choisit le pic du graphe de Silhouette qui est atteint pour $K = 2$.
+La méthode des K-means proposait $K = 4$ clusters.  
 Cela peut s’expliquer par le fait que les méthodes de clustering ont des objectifs différents :
-La méthode des k-means peut se concentrer sur la minimisation de la variance intra-cluster, tandis que Silhouette va se concentrer sur la séparation entre les clusters et l’homogénéité à l’intérieu des clusters. 
+La méthode des k-means peut se concentrer sur la minimisation de la variance intra-cluster, tandis que Silhouette va se concentrer sur la séparation entre les clusters et l’homogénéité à l’intérieu des clusters.  
 Ces considérations ne sont cependant pas absolues et dépendent des données en question.
 C’est pour cela que nous allons exploiter d’autres méthodes de clustering.
-Voici les résultats graphiques obtenus pour K = 2 avec Silhouette :
+Voici les résultats graphiques obtenus pour $K = 2$ avec Silhouette :
 
 
-```{r fig1,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}Silhouette avec K=2",fig.height=3}
+```{r fig1,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}Silhouette avec K=2",fig.height=2, fig.width=5}
 aux<-silhouette(reskmeanscl[,1],daisy(data_kmeans))
 fviz_silhouette(aux)+theme(plot.title = element_text(size =9))
-rm(df,Silhou,aux)
 ```
 
 Au vu des des silhouettes du graphe, il y a une bonne répartition des clusters.
@@ -450,77 +457,23 @@ Au vu des des silhouettes du graphe, il y a une bonne répartition des clusters.
 
 ### Mélanges Gaussiens
 
-**Explication de la méthode des mélanges Gaussiens**\
 
 #### Critère de sélection BIC
 
-Pour commencer, avec un premier affichage en faisant varier le nombre de composantes de 2 à 50, nous n’obtenons pas de résultats satisfaisants, pour pouvoir déterminer le mélange qui s’ajuste le mieux aux données.
-Cependant, le graphe ci-dessous va nous permettre d’écarter tous les modèles sphériques et diagonaux, qui fournissent des résultats bien moins bons que les autres modèles :
+Les critères BIC et ICL ne nous ont pas permis d’obtenir de résultats satisfaisants, et leur compilation est très longue en raison du grand nombre de composantes que nous avons dû afficher pour espérer avoir un critère d’arrêt.
+Nous n’avons donc pas jugé utile d’afficher les différents graphiques obtenus.
+En effet, avec un premier affichage en faisant varier le nombre de composantes de $2$ à $50$, aucun critère d’arrêt n’a été trouvé par le critère BIC.
+Cependant, le graphe nous a permis d’écarter tous les modèles sphériques et diagonaux, qui fournissent des résultats bien moins bons que les autres.  
 
-```{r}
-#Classification HIérarchique CAH
-
-Data_CAH <- data_scaled_df
-Data_CAH <- enlever_donnee_aber(Data_CAH, colnames(Data_CAH))
-
-d=dist(x = Data_CAH ,method = "euclidian")
-#hclustsingle<-hclust(d,method = "single")
-#hclustcomplete<-hclust(d,method = "complete")
-#hclustaverage<-hclust(d,method = "average")
-
-#fviz_dend(hclustsingle,show_labels=FALSE)
-#fviz_dend(hclustcomplete,show_labels=FALSE)
-#fviz_dend(hclustaverage,show_labels=FALSE)
-
-#single = dendogramme en escalier, c'est mauvais -> tendance à l'agrégation 
-#complete = dendogramme équilibré 
-#average = dendogramme plutôt équilibré mais à tendance 
-
-hward<-hclust(d,method = "ward.D2")
-fviz_dend(hward,show_labels=FALSE)
-
-#hward forme des ecaliers ici et tend à l'agrégation
-```
-
-
-En conservant uniquement les modèles les plus «performants», on remarque que le modèle retenu dans tous les cas est VEV.
-Cependant, il semblerait que le critère n’arrive toujours pas à trouver un point d’arrêts pour le nombre optimal de clusters.
-Nous allons donc utiliser le critère ICL sur les coordonnées de l’ACP.
-
-### Critère de sélection ICL
-Comme nous l’avons vu précédemment, le modèle qui s’impose le plus est VEV.
-Nous allons donc nous concentrer sur ce modèle pour le critère ICL.
-IL est important de noter que le critère ICL n’arrive pas non plus à trouver un critère d’arrêt.
-Nous avons donc décidé d’afficher l’allure du graphe de VEV pour trouver un point où la progression de la courbe commence à stagner :
+En conservant uniquement les modèles les plus « performants », on remarque que le modèle retenu dans tous les cas est VEV. Cependant, il semblerait que le critère n’arrive toujours pas à trouver un point d’arrêts pour le nombre optimal de clusters.
+Nous avons donc utilisé le critère ICL sur les coordonnées de l’ACP.
+Cependant, aucun résultant intéressant n’a été obtenu avec celui-ci aussi, le nombre de classes suggéré étant beaucoup trop grand.  
+Nous avons donc cherché à savoir quand est-ce que le graphe du critère ICL pour le modèle VEV se stabilisait.
+Une fois encore, le résultat n’était pas interprétable, compte tenu du fait que le graphe commençait à stagner à partir de $K = 50$ classes, ce qui est beaucoup trop grand.
 
 
 
-
-
-On remarque que la courbe commence à stagner à partir de K = 50, ce qui n’est pas un nombre de clusters satisfaisant.
-
-
-```{r fig42,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig42}Critère de sélection ICL",fig.height=3}
-#silhouette
-
-S<-NULL
-Kmax<-20
-for (k in 2:Kmax){
-  S<-c(S,index.S (d,cutree(hward,k=k)))
-}
-daux<-data.frame(NbClust=2:Kmax,silhou=S)
-ggplot(daux,aes(x=NbClust,y=S))+geom_line()+geom_point()
-```
-
-
-```{r fig43,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig43}Mélanges Gaussiens avec K=5",fig.height=3}
-ClustS<-cutree(hward,k=which.max(S)+1)
-fviz_dend(hward,k=which.max(S)+1,show_labels=FALSE,rect = TRUE, rect_fill = TRUE,palette = "npg",rect_border = "npg",
-          labels_track_height = 0.8)
-```
-
-
-```{r fig44,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig44}Mélanges Gaussiens avec K=5",fig.height=3}
+```{r fig44,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig44}Mélanges Gaussiens avec K=5",fig.height=2}
 # mélange (en janvier)
 Data_melG <- data_scaled_df
 Data_melG <- enlever_donnee_aber(Data_melG, colnames(Data_melG))
@@ -531,7 +484,7 @@ fviz_mclust_bic(resBIC,what=c("classification","uncertainty","BIC"))
 ```
 
 
-```{r fig45,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig45}Mélanges Gaussiens avec K=5",fig.height=3}
+```{r fig45,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig45}Mélanges Gaussiens avec K=5",fig.height=2}
 # On peut écarter tous les modèles sphériques et diagonaux, et donc les écarter du modèle.
 # VEV est toujours en haut, on se concentre donc sur celui-ci :
 
@@ -541,7 +494,7 @@ summary(resBIC_VEV)
 ```
 
 
-```{r fig46,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig46}Mélanges Gaussiens avec K=5",fig.height=3}
+```{r fig46,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig46}Mélanges Gaussiens avec K=5",fig.height=2}
 pca_res <- prcomp(Data_melG, scale. = TRUE)
 pca_coordinates <- pca_res$x
 
@@ -561,14 +514,96 @@ ggplot(data_test, aes(x=k,y=resICL[,1]))+geom_line()
 
 
 
-
-#### Dendogrammes
-A part pour complete, toutes les autres méthodes et silhouettes trouvent deux clusters :
-on utilise donc hward (à justifier), et on obtient : 
-
+### Dendogrammes
+Nous avons décidé d’écarter les mesures d’agrégation single et complete en raison de leurs défauts (sensibilité aux données bruitées, effet de chaînage,…).
+La mesure d’agrégation de Ward, quant à elle, tend à former des groupes avec des effectifs équilibrés à un niveau hiérarchique donné et c’est pourquoi nous avons décidé de l’utiliser pour la partie CAH.
 
 
-#### Leafleet
+```{r, echo=FALSE}
+#Classification HIérarchique CAH
+
+Data_CAH <- data_scaled_df
+Data_CAH <- enlever_donnee_aber(Data_CAH, colnames(Data_CAH))
+
+d=dist(x = Data_CAH ,method = "euclidian")
+
+hward<-hclust(d,method = "ward.D2")
+```
+
+```{r, echo=FALSE, eval=FALSE}
+fviz_dend(hward,show_labels=FALSE)
+
+#hward forme des ecaliers ici et tend à l'agrégation
+```
+
+
+```{r, echo=FALSE,eval=FALSE}
+# Affichage des dendogrammes pour les différentes méthodes d'agrégation
+hclustsingle<-hclust(d,method = "single")
+hclustcomplete<-hclust(d,method = "complete")
+hclustaverage<-hclust(d,method = "average")
+
+fviz_dend(hclustsingle,show_labels=FALSE)
+fviz_dend(hclustcomplete,show_labels=FALSE)
+fviz_dend(hclustaverage,show_labels=FALSE)
+
+#single = dendogramme en escalier, c'est mauvais -> tendance à l'agrégation 
+#complete = dendogramme équilibré 
+#average = dendogramme plutôt équilibré mais à tendance
+```
+
+
+
+Avec le critère Pseudo-F (Calinski-Harabasz), on observe un pic sur le graphe atteint pour un nombre de cluster égal à deux.
+Avec le critère Silouhette, nous obtenons aussi le même résultat 
+
+```{r, echo=FALSE,eval=TRUE}
+# Critère Calinski-Harabasz
+CH<-NULL
+Kmax<-20
+for (k in 2:Kmax){
+  CH<-c(CH,index.G1 (Data_CAH,cutree(hward,k=k)))
+}
+daux.ch<-data.frame(NbClust=2:Kmax,CH=CH)
+
+# Creation de la classification
+ClustCH<-cutree(hward,k=2)
+```
+
+```{r,echo=FALSE,eval=TRUE}
+# Critère Silhouette
+S<-NULL
+Kmax<-20
+for (k in 2:Kmax){
+  S<-c(S,index.S (d,cutree(hward,k=k)))
+}
+daux.s<-data.frame(NbClust=2:Kmax,silhou=S)
+
+# Creation de la classification
+ClustS<-cutree(hward,k=2)
+```
+
+```{r fig41,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig41}Critère de sélection Calinski-Harabasz et Silhouette",fig.height=2}
+g1 = ggplot(daux.ch,aes(x=NbClust,y=CH))+geom_line()+geom_point()
+g2 = ggplot(daux.s,aes(x=NbClust,y=S))+geom_line()+geom_point()
+grid.arrange(g1,g2,ncol=2)
+```
+
+```{r,echo=FALSE,eval=FALSE}
+fviz_dend(hward,k=which.max(CH)+1,show_labels=FALSE,rect = TRUE, rect_fill = TRUE,palette = "npg",rect_border = "npg",
+          labels_track_height = 0.8)
+```
+
+
+Ainsi nous obtenons la répartition des données suivante :
+
+```{r fig43,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig43}Mélanges Gaussiens avec K=5",fig.height=3}
+ClustS<-cutree(hward,k=which.max(S)+1)
+fviz_dend(hward,k=which.max(S)+1,show_labels=FALSE,rect = TRUE, rect_fill = TRUE,palette = "npg",rect_border = "npg",
+          labels_track_height = 0.8)
+```
+
+
 
 ```{r,echo=FALSE,eval=TRUE}
 plotmapquali<-function(dataposition,varquali){
@@ -583,11 +618,10 @@ leaflet(dataposition) %>%
 ```
 
 
-**A changer !!!**
-
 ```{r,echo=TRUE,eval=FALSE}
 plotmapquali(pca_coordinates,resBIC_VEV$classification)
 ```
+
 
 
 
@@ -648,7 +682,7 @@ La LDA permet également de trouver la combinaisons linéaires des coordonnées 
 Dans notra cas, nous créeons une nouvelle variable binaire, valant 1 si le taux d'émission de méthane dépasse les 1000 tonnes par an, et 0 sinon.
 Nous effectuons ensuite une LDA, et nous pouvons visualiser les résultats dans la figure \ref{fig:fig11}.
 
-```{r fig11,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}LDA sur le taux de méthane",fig.height=3}
+```{r fig11,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}LDA sur le taux de méthane",fig.height=2, fig.width=5}
 # Afficher les individus dans le graphique
 vec=c(rep(1,nrow(d_train)))
 ggplot(df_lda,aes(x=mp,y=vec,color=ch4_t)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("y")
@@ -666,7 +700,7 @@ Afin de vérifier la capacité de classification du taux de méthane, nous allon
 La LDA précédente a été faite sur 70% des individus, afin de pouvoir faire une prédiction sur les 30% restants.
 Nous obtenons les résultats sur la figure suivante :
 
-```{r fig12,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig12}Prédiction sur le taux de méthane",fig.height=3}
+```{r fig12,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig12}Prédiction sur le taux de méthane",fig.height=2, fig.width=5}
 heatmap_data <- as.data.frame(conf_mat.ch4$table)
 
 ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
@@ -727,7 +761,7 @@ ggplot(df_lda,aes(x=x.LD2,y=x.LD3,color=TypeEPCI)) + geom_point(size=2)+ ggtitle
 ```
 
 
-```{r fig13,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig13}LDA en fonction des types EPCI",fig.height=3}
+```{r fig13,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig13}LDA en fonction des types EPCI",fig.height=2, fig.width=5}
 ggplot(df_lda,aes(x=x.LD1,y=x.LD2,color=TypeEPCI)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("LD2")
 ```
 
@@ -828,7 +862,7 @@ print(lda_model)
 ```
 
 
-```{r fig15,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig15}LDA en fonction des types EPCI",fig.height=3}
+```{r fig15,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig15}LDA en fonction des types EPCI",fig.height=2}
 g1=ggplot(df_lda_simp1,aes(x=x.LD1,y=x.LD2,color=TypeEPCI)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("LD2")
 g2=ggplot(df_lda_simp2,aes(x=LD1,y=vec,color=TypeEPCI)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("LD2")
 grid.arrange(g1,g2,ncol=2)
@@ -853,7 +887,7 @@ conf_mat_simp2=confusionMatrix(as.factor(d_test_simp2$TypeEPCI),predictions_simp
 
 
 
-```{r fig16,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig16}Prédiction en fonction des types EPCI simplifiés",fig.height=3}
+```{r fig16,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig16}Prédiction en fonction des types EPCI simplifiés",fig.height=2.5}
 heatmap_data_s1 <- as.data.frame(conf_mat_simp1$table)
 heatmap_data_s2 <- as.data.frame(conf_mat_simp2$table)
 
@@ -889,17 +923,22 @@ Or, nos regroupements n'ont pas agréger ces deux classes, n'améliorant donc pa
 
 ### Modèle d'ANOVA
 On explique le gaz à effet de serre en fonction des variables Type et années.\
+Soit $T = \{CC,CA,CU,Metropole\}$, l'ensemble des types d'EPCI et $A = \{2015,2016,2017,2018,2019\}$ l'ensemble des années.  
+Soit $\text{ges\_teqco2}_{ij}$ le gaz à effet de serre de l'EPCI $i$ à l'année $j$, avec $i \in T$ et $j \in A$.\
 
-On utilise un modèle d'ANOVA à deux facteurs avec interaction :
+On utilise le modèle d'ANOVA à deux facteurs avec interaction suivant :
 $$
-Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \gamma_{ij} + \epsilon_{ij}
+\text{(Mod1) : }\begin{cases}
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta{j} + \gamma_{ij} + \varepsilon_{ij}\\
+   \\
+  \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
 $$
 
-**EXPLIQUER LA SIGNIFICATION DES TERMES DU MODELE**\
+Sur R : $\texttt{lm(ges\_teqco2 \~TypeEPCI * annee\_inv, data=dlog)}$
 
 
-
-```{r, eval=TRUE, echo=FALSE}
+```{r, eval=TRUE, echo=FALSE, include = FALSE}
 dlog=data[4:15]
 data_quant=scale(log(data[4:14]))
 dlog[1:11]=data_quant
@@ -909,24 +948,26 @@ anov2= lm(ges_teqco2 ~TypeEPCI * annee_inv, data=dlog)
 summary(anov2)
 ```
 
--> Commentaire sur la valeur de R² obtenue.\
+On obtient un R² ajusté de `r round(summary(anov2)$adj.r.squared, digits=3)` $\approx 0.5$.
+Cela signifie que le modèle n'explique que partiellement la variance des données.\
+
 
 On essaie de simplifier le modèle en enlevant les interactions avec un test de sous-modèle :
 $$
 \mathcal{H}_0 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 \qquad \text{ contre } \qquad
 \mathcal{H}_1 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \gamma_{ij} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \gamma_{ij} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
 
-**Dire pourquoi c'est bien un sous-modèle**\
+C'est bien un test de sous-modèle car on enlève des variables explicatives.  
 
-Sur R : $\texttt{lm(ges\_teqco2 \~TypeEPCI + annee\_inv, data=dlog)}$
+Sur R : $\texttt{anova(modele\_avec\_interactions,modele\_sans\_interactions)}$
 
 
 ```{r, eval=TRUE, echo=FALSE}
@@ -939,35 +980,34 @@ anova(anov_sans_int,anov2)
 
 
 On obtient une p-value de `r round(anova(anov_sans_int,anov2)$Pr[2], digits=3)` > $0.05$.\
-On ne rejette pas l'hypothèse de nullité des interactions.\
+On ne rejette pas l'hypothèse de nullité des interactions.  
 On garde donc le modèle suivant :
 $$
-Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}
-$$\
+\text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij} \quad \text{ avec } \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
+$$
 
 On essaie de simplifier le modèle en enlevant une des variables explicatives (on fait 2 tests de sous-modèle) :
 $$
 \mathcal{H}_0 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 \qquad \text{ contre } \qquad
 \mathcal{H}_1 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
 
-et 
-
+et
 $$
 \mathcal{H}_0 : \quad \begin{cases}
-  Y_{ij} = \mu + \beta_{j} + \epsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \beta_{j} + \epsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 \qquad \text{ contre } \qquad
 \mathcal{H}_1 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \epsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \epsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
@@ -988,18 +1028,18 @@ anova(anov_type,anov_sans_int)
 Pour le modèle dépendant uniquement du type d'EPCI, on obtient une p-value de `r round(anova(anov_type,anov_sans_int)$Pr[2], digits=3)` > $0.05$.\
 On peut donc enlever l'année dans le modèle :
 $$
-Y_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}
+\text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \varepsilon_{ij} \quad \text{ avec } \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 $$
 
 On essaie à nouveau de simplifier le modèle en enlevant les variables explicatives :
 $$
 \mathcal{H}_0 : \quad \begin{cases}
-  Y_{ij} = \mu + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 \qquad \text{ contre } \qquad
 \mathcal{H}_1 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
@@ -1011,17 +1051,17 @@ anova(lm(ges_teqco2 ~1, data=dlog),anov_type)
 ```
 
 On obtient cette fois une p-value de `r round(anova(lm(ges_teqco2 ~1, data=dlog),anov_type)$Pr[2], digits=3)` < $0.05$.\
-On ne peut donc pas enlever le type d'EPCI dans le modèle.
+On ne peut donc pas enlever le type d'EPCI dans le modèle.  
 
 On vérifie finalement la cohérence du modèle retenu :
 $$
 \mathcal{H}_0 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 \qquad \text{ contre } \qquad
 \mathcal{H}_1 : \quad \begin{cases}
-  Y_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
   \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
@@ -1034,6 +1074,13 @@ anova(anov_type,anov2)
 
 On obtient une p-value de `r round(anova(anov_type,anov2)$Pr[2], digits = 3)` > $0.05$ donc le modèle est cohérent.
 On garde donc le modèle :
+$$
+\begin{cases}
+  \text{ges\_teqco2}_{ij} = \mu + \alpha_{i} + \beta_{j} + \varepsilon_{ij}\\
+   \\
+  \varepsilon_{ij} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
 
 ```{r, eval=FALSE, echo=FALSE}
 summary(anov_type)
@@ -1063,8 +1110,8 @@ p_err=sum(resultat$erreur_pourcentage)/nrow(resultat)
 ```
 
 Nous vérifions le modèle que nous avons obtenu en faisant un peu de prédiction.
-Pour cela, on crée le modèle sur 70% des données, et on essaye de prédire la valeur du gaz à effet de serre sur les 30% restants.
-Les résultats obtenus montrent un écart moyen entre la réalité et la prédiction, soit un écart moyen de `r round(p_err, digits=2)` %.
+Pour cela, on crée le modèle sur 70% des données, et on essaye de prédire la valeur du gaz à effet de serre sur les 30% restants.  
+Les résultats obtenus montrent un écart moyen entre la réalité et la prédiction de `r round(p_err, digits=2)` %.
 
 
 
@@ -1074,12 +1121,13 @@ Les résultats obtenus montrent un écart moyen entre la réalité et la prédic
 data_reg = enlever_donnee_aber(data_scaled_df,colnames(data_scaled_df))
 ```
 
-__Modèle linéaire additif expliquant le gaz à effet de serre en fonction de tous les autres polluants__
-
-On a le modèle additif suivant que l'on peut ajuster sur R de la façon suivante :
+On explique le gaz à effet de serre en fonction de tous les autres polluants.\
+On considère le modèle de régression linéaire suivant :
 $$
 \begin{cases}
-  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{co\_kg}_i + \theta_6\text{c6h6\_kg}_i + \theta_7\text{nh3\_kg}_i +\theta_8 \text{ch4\_t}_i + \theta_9\text{co2\_t}_i + \theta_{10}\text{no2\_t}_i + \varepsilon_{i}\\
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{co\_kg}_i\\
+  \qquad \qquad \qquad \qquad + \theta_6\text{c6h6\_kg}_i + \theta_7\text{nh3\_kg}_i +\theta_8 \text{ch4\_t}_i + \theta_9\text{co2\_t}_i + \theta_{10}\text{no2\_t}_i + \varepsilon_{i}\\
+   \\
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
@@ -1089,74 +1137,90 @@ mod_ges=lm(formula=ges_teqco2~.,data=data_scaled_df)
 summary(mod_ges)
 ```
 
-Sur le résultat affiché, on obtient une p-valeur de `r round(summary(mod_ges)$coefficients[c("c6h6_kg"),4], digits=3)`pour la variable c6h6_kg,
-et une p-valeur de `r round(summary(mod_ges)$coefficients[c("co_kg"),4], digits=3)`pour la variable co_kg.
-Ces deux p-valeurs sont supérieures à 0.05, on ne rejette donc pas l'hypothèse de nullité des coefficients associés à ces deux variables.
+Sur le résultat affiché, on obtient une p-valeur de `r round(summary(mod_ges)$coefficients[c("c6h6_kg"),4], digits=3)` pour la variable c6h6_kg,
+et une p-valeur de `r round(summary(mod_ges)$coefficients[c("co_kg"),4], digits=3)` pour la variable co_kg.
+Ces deux p-valeurs sont supérieures à 0.05.
+Cela pourrait suggérer la possibilité de les exclure du modèle afin de le simplifier.  
 
-Il est à noter que le test de nullité pour certaines variables telles que c6h6_kg et co_kg présente une p-value supérieure à 0,05. Cela pourrait suggérer la possibilité de les exclure du modèle afin de le simplifier.  
-
-__Selection des variables explicatives__
 
 Nous allons maintenant simplifier le modèle en selctionnant les variables explicatives pertinentes
 
-* Avec la méthode backward
+__Avec la méthode backward__
+
 On obtient les résultats suivants avec la méthode backward.  
 Sur R : $\texttt{regsubsets(ges\_teqco2\~.,data=data\_scaled\_df,nbest=1,nvmax=10,method="backward")}$
 ```{r,echo=FALSE,eval=TRUE}
 choixb<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="backward")
-summary(choixb)
+#summary(choixb)
 ```
 
-```{r fig56, echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig56}Sélection des variables explicatives en backward",fig.height=3}
-g1 = plot(choixb,scale="bic")
-g2 = plot(choixb,scale="adjr2")
-g3 = plot(choixb,scale="Cp")
-grid.arrange(g1,g2,g3,ncol=3)
+```{r,echo=FALSE,eval=TRUE, fig.show="hold",fig.cap="\\label{fig:fig55}Sélection des variables explicatives en backward",fig.height=3}
+par(mfrow=c(1,3))
+
+plot(choixb, scale="bic")
+plot(choixb, scale="adjr2")
+plot(choixb, scale="Cp")
+
+par(mfrow=c(1,1))
 ```
+
 
 En utilisant la méthode Backward, tous les critères conduisent à la même sélection de variables, celle pour laquelle nous avions formulé l'hypothèse précédemment lors des tests de nullité.
 
 Voici le modèle simplifié proposé avec la méthode backward:
 $$
 \begin{cases}
-  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{no2\_t}_i + \varepsilon_{i}\\
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i\\
+  \qquad \qquad \qquad \qquad + \theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{no2\_t}_i + \varepsilon_{i}\\
+   \\
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
 
 
-* Avec la méthode forward
+__Avec la méthode forward__
 
 Nous allons maintenant effectuer la même selection mais cette fois-ci avec la méthode forward pour vérifier la simplification possible du modèle. Et nous obtenons les résulats suivant avec les critères bic, Cp et R2.
 
 ```{r,echo=FALSE,eval=TRUE}
 choixf<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="forward")
-summary(choixf)
+#summary(choixf)
 ```
 
-```{r fig58, echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig58}Sélection des variables explicatives en forward",fig.height=3}
-g1 = plot(choixf,scale="bic")
-g2 = plot(choixf,scale="adjr2")
-g3 = plot(choixf,scale="Cp")
-grid.arrange(g1,g2,g3,ncol=3)
+```{r fig58, echo=FALSE,eval=TRUE,fig.show="hold", fig.cap="\\label{fig:fig58}Sélection des variables explicatives en forward",fig.height=3}
+par(mfrow=c(1,3))
+
+plot(choixf, scale="bic")
+plot(choixf, scale="adjr2")
+plot(choixf, scale="Cp")
+
+par(mfrow=c(1,1))
 ```
 
-Les résultats obtenus à partir de tous les critères concordent avec ceux de la méthode backward pour simplifier le modèle en éliminant les variables Co et C6h6. Il est désormais essentiel de valider ce sous-modèle.
+Les résultats obtenus à partir de tous les critères concordent avec ceux de la méthode backward pour simplifier le modèle en éliminant les variables co_kg et c6h6_kg.
+Il est désormais essentiel de valider ce sous-modèle.
 
-
-* Validation du sous modèle
 
 Nous prévoyons de réaliser une analyse de variance (ANOVA) pour évaluer la performance du modèle simplifié par rapport au modèle complet.
 Cette comparaison nous permettra de déterminer si le modèle simplifié conserve une précision de prédiction similaire tout en étant plus parcimonieux.
 
 $$
 \mathcal{H}_0 : \quad \begin{cases}
-  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{n2o\_t}_i + \varepsilon_{i}\\
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i\\
+  \qquad \qquad \qquad + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i\\
+  \qquad \qquad \qquad + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i\\
+  \qquad \qquad \qquad + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i\\
+  \qquad \qquad \qquad + \theta_8\text{no2\_t}_i + \varepsilon_{i}\\
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 \qquad \text{ contre } \qquad
 \mathcal{H}_1 : \quad \begin{cases}
-  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{co\_kg}_i + \theta_6\text{c6h6\_kg}_i + \theta_7\text{nh3\_kg}_i +\theta_8 \text{ch4\_t}_i + \theta_9\text{co2\_t}_i + \theta_{10}\text{no2\_t}_i + \varepsilon_{i}\\
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i \\
+  \qquad \qquad \qquad + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i\\
+  \qquad \qquad \qquad + \theta_4\text{pm25\_kg}_i +\theta_5\text{co\_kg}_i\\
+  \qquad \qquad \qquad + \theta_6\text{c6h6\_kg}_i + \theta_7\text{nh3\_kg}_i\\
+  \qquad \qquad \qquad + \theta_8\text{ch4\_t}_i + \theta_9\text{co2\_t}_i\\
+  \qquad \qquad \qquad + \theta_{10}\text{no2\_t}_i + \varepsilon_{i}\\
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
@@ -1164,6 +1228,9 @@ $$
 
 ```{r,echo=FALSE,eval=TRUE}
 reg_simpl=lm(formula=ges_teqco2~nox_kg+so2_kg+pm10_kg+pm25_kg+nh3_kg+ch4_t+co2_t+n2o_t,data=data_scaled_df)
+```
+
+```{r,echo=FALSE,eval=FALSE}
 anova(reg_simpl,mod_ges)
 ```
 
@@ -1172,10 +1239,203 @@ On ne rejette donc pas $\mathcal{H}_0$ et on peut simplifier le modèle additif 
 
 $$
 \begin{cases}
-  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i +\theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{n2o\_t}_i + \varepsilon_{i}\\
+  \text{ges\_teqco2}_i = \theta_0 + \theta_1\text{nox\_kg}_i + \theta_2\text{so2\_kg}_i + \theta_3\text{pm10\_kg}_i + \theta_4\text{pm25\_kg}_i\\
+  \qquad \qquad \qquad \qquad + \theta_5\text{nh3\_kg}_i + \theta_6\text{ch4\_t}_i + \theta_7\text{co2\_t}_i + \theta_8\text{no2\_t}_i + \varepsilon_{i}\\
+   \\
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
+
+Nous allons maintenant valider si le sous modèle convient.
+
+```{r, echo=FALSE, eval=FALSE}
+reg_simpl=lm(formula=ges_teqco2~nox_kg+so2_kg+pm10_kg+pm25_kg+nh3_kg+ch4_t+co2_t+n2o_t,data=data_scaled_df)
+#anova(reg_simpl,mod_ges)
+```
+
+En effectuant un test de Fisher de sous model on obtient une pvaleur de `r round(anova(reg_simpl,mod_ges)$Pr[2], digits=3)` > 0.05 donc on ne rejette pas H0 et on peut simplifier le modèle additif en un sous modèle:
+
+
+$ges_i = \theta_0 + \theta_1nox_i+\theta_2so2_i + \theta_3pm10_i + \theta_4pm25_i  + \theta_5nh3_i +\theta_6 ch4_i + \theta_7co2_i + \theta_8no2_i + \epsilon$
+$$
+\begin{cases}
+  ges_i = \theta_0 + \theta_1nox_i+\theta_2so2_i + \theta_3pm10_i\\
+   + \theta_4pm25_i  + \theta_5nh3_i +\theta_6 ch4_i\\
+   + \theta_7co2_i + \theta_8no2_i + \varepsilon_i\\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
+
+```{r, echo=FALSE}
+autoplot(reg_simpl,which=c(1,2),label.size=2)     
+```
+
+Nous faisons ensuite un autoplot, afin de pouvoir vérifier les différentes hypothèses d'un modèle linéaire.
+Premièrement, les $\epsilon_i$ doivent être centré en 0;
+Quand on regarde le premier graphe, on remarque que les résidus $\hat{\epsilon_i}$ semblent centrés en 0.
+La deuxième hypothèse nous dit que tous les $\epsilon_i$ ont la même variance.
+Or, tous les individus semblent contenu dans un tube, nous indiquant que cette hypothèse semble vérifier.
+Ensuite la troisième hypothèse est l'indépendance entre les $\epsilon_i$ et $Y_i$.
+Dans le premier graphe, il n'y a pas de forme particulière, et les $\epsilon_i$ et $Y_i$ semblent donc indépendants.
+La dernière hypothèse est celle de la normalité des $Y_i$. En regardant le Q-Q plot, les quantiles empiriques sont plutôt proches des théoriques. 
+Ainsi, les 4 hypothèses sont vérifiées, le modèle linéaire est donc adapter pour réprésenter ces données.
+
+```{r, echo=FALSE, eval=TRUE}
+tildeY=scale(data_quant[,8],center=T,scale=T)
+tildeX=scale(data_quant[,-8],center=T,scale=T)
+
+lambda_seq<-10^(seq(-4,4,0.01))
+fitridge <- glmnet(tildeX,tildeY, alpha = 0, lambda = lambda_seq,family=c("gaussian"),intercept=F) 
+```
+
+#### Régréssion régularisé  
+
+Nous allons maintenant effectuer une régression régularisée.
+Cette méthode consiste à changer la fonction à minimiser pour trouver notre estimateurs des paramètres $\hat{\theta}$.
+Le but de cette méthode est d'obtenir un estimateur certes biaisé, mais qui a une variance plus petite.
+Il faudrait résoudre $\hat{\theta} = \text{argmin}_{\theta \in \mathbb{R}_k} (\|Y - X\theta\|^2 - \lambda pen(\theta))$.
+La fonction $\theta \mapsto \text{pen}(\theta)$ dépend du type de régression régularisée.
+Nous allons voir la régression de Ridge, de Lasso et Elastic Net.
+
+
+```{r,echo=FALSE,include=FALSE}
+df=data.frame(lambda = rep(fitridge$lambda,ncol(tildeX)), theta=as.vector(t(fitridge$beta)),variable=rep(colnames(tildeX),each=length(fitridge$lambda)))
+g1 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
+  geom_line()+
+  theme(legend.position="bottom")+
+  scale_x_log10()
+ggplotly(g1)
+ridge_cv <- cv.glmnet(tildeX, tildeY, alpha = 0, lambda = lambda_seq,nfolds=10, type.measure=c("mse"),intercept=F)
+best_lambda <- ridge_cv$lambda.min
+best_lambda
+```
+
+##### Ridge  
+
+  Commençons par faire une régréssion Ridge. Cette méthode consiste à définir $pen(\theta) = \|\theta\|^2_2$. On commence par calculer la valeurs des coefficients de $\hat{\theta}$ minimisant la fonction pour différentes valeurs de $\lambda$, réprésentées dans la figure \ref{fig:fig30} . Ensuite, nous faisons une validation croisé afin de trouver le $\lambda$ optimal. En regardant la figure de droite de \ref{fig:fig30}, on remarque que le $\lambda$ retenu est 
+```{r,results='asis',echo=FALSE}
+cat(best_lambda)
+```
+. La droite rouge dans la figure de droite est tracé au niveau du lambda optimal, et nous permet de récupérer les coefficients du $\hat{\theta}$ final.
+
+```{r fig30,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig30}Régularisation Ridge",fig.height=3}
+g1=g1 + 
+  geom_vline(xintercept = best_lambda,linetype="dotted", color = "red")+
+  scale_x_log10()
+
+df2=data.frame(lambda=ridge_cv$lambda,MSE=ridge_cv$cvm,cvup=ridge_cv$cvup,cvlo=ridge_cv$cvlo)
+gmse<-ggplot(df2)+
+  geom_line(aes(x=lambda,y=MSE))+
+  geom_vline(xintercept = ridge_cv$lambda.min,col="red",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvup),col="blue",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvlo),col="blue",linetype="dotted")+
+  #xlim(c(0,ridge_cv$lambda.min+0.5))+
+  scale_x_log10()
+grid.arrange(g1,gmse,ncol=2)
+```
+```{r, echo=FALSE,include=FALSE}
+extract.coef(ridge_cv,lambda = "lambda.min")
+```
+
+##### Lasso  
+
+  On effectue exactement la même procédure, mais avec une régression de Lasso, qui correspond à :
+  $pen(\theta) = \|\theta\|_1$
+
+```{r fig31,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig31}Régularisation Lasso",fig.height=3}
+fitlasso <- glmnet(tildeX,tildeY, alpha = 1, lambda = lambda_seq,family=c("gaussian"),intercept=F)
+
+df=data.frame(lambda = rep(fitlasso$lambda,ncol(tildeX)), theta=as.vector(t(fitlasso$beta)),variable=rep(colnames(tildeX),each=length(fitlasso$lambda)))
+g3 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
+  geom_line()+
+  theme(legend.position="bottom")+
+  scale_x_log10()
+
+lasso_cv <- cv.glmnet(tildeX, tildeY, alpha = 1, lambda = lambda_seq,nfolds=10, type.measure=c("mse"),intercept=F) 
+best_lambda <-lasso_cv$lambda.min
+lambda1se <- lasso_cv$lambda.1se
+
+
+g3=g3 + 
+  geom_vline(xintercept = best_lambda,linetype="dotted", color = "red")+
+  geom_vline(xintercept = lambda1se,linetype="dotted", color = "blue")+
+  scale_x_log10()
+
+df2=data.frame(lambda=lasso_cv$lambda,MSE=lasso_cv$cvm,cvup=lasso_cv$cvup,cvlo=lasso_cv$cvlo)
+gmse<-ggplot(df2)+
+  geom_line(aes(x=lambda,y=MSE))+
+  geom_vline(xintercept = lasso_cv$lambda.min,col="red",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvup),col="blue",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvlo),col="blue",linetype="dotted")+
+  #xlim(c(0,ridge_cv$lambda.min+0.5))+
+  scale_x_log10()
+grid.arrange(g3,gmse,ncol=2)
+```
+
+  Notre $\lambda$ optimal est:
+```{r,results='asis',echo=FALSE}
+cat(best_lambda)
+```
+.
+
+```{r,echo=FALSE,include=FALSE}
+extract.coef(lasso_cv,lambda = "lambda.min")
+```
+
+##### Elastic Net  
+
+```{r fig32,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig32}Régularisation Elastic Net",fig.height=3}
+fitEN <- glmnet(tildeX, tildeY, alpha = 0.5, lambda = lambda_seq, type.measure=c("mse"),intercept=F)
+df=data.frame(lambda = rep(fitEN$lambda,ncol(tildeX)), theta=as.vector(t(fitEN$beta)),variable=rep(c(colnames(tildeX)),each=length(fitEN$lambda)))
+g4 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
+  geom_line()+
+  theme(legend.position="bottom")+
+  scale_x_log10()
+EN_cv <- cv.glmnet(tildeX, tildeY, alpha = 0.5, lambda = lambda_seq, type.measure=c("mse"),intercept=F) 
+best_lambda <-EN_cv$lambda.min
+g4=g4 + geom_vline(xintercept = best_lambda,linetype="dotted", 
+                color = "red")
+df2=data.frame(lambda=EN_cv$lambda,MSE=EN_cv$cvm,cvup=EN_cv$cvup,cvlo=EN_cv$cvlo)
+gmse<-ggplot(df2)+
+  geom_line(aes(x=lambda,y=MSE))+
+  geom_vline(xintercept = EN_cv$lambda.min,col="red",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvup),col="blue",linetype="dotted")+
+  geom_line(aes(x=lambda,y=cvlo),col="blue",linetype="dotted")+
+  #xlim(c(0,ridge_cv$lambda.min+0.5))+
+  scale_x_log10()
+grid.arrange(g4,gmse,ncol=2)
+```
+  
+Le $\lambda$ optimal pour Elastic Net est de :
+```{r,results='asis',echo=FALSE}
+cat(best_lambda)
+```
+.
+
+
+```{r,echo=FALSE,include=FALSE}
+extract.coef(EN_cv,lambda = "lambda.min")
+```
+
+#### Analyse des résultats  
+
+```{r fig33,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig33}Résultats des différentes régularisations",fig.height=3}
+regusuel=  mod_ges
+df4=data.frame(x=rep(colnames(tildeX),4),
+               coef=c(as.vector(regusuel$coefficients)[-1],as.vector(coef(ridge_cv,s=ridge_cv$lambda.min)[-1]),as.vector(coef(lasso_cv)[-1]),as.vector(coef(EN_cv)[-1])),
+               reg=c(rep("reg.lin",ncol(tildeX)),rep("ridge",ncol(tildeX)),rep("lasso",ncol(tildeX)),rep("ElasticNet",ncol(tildeX))))
+
+g5=ggplot(df4)+
+  geom_point(aes(x=x,y=coef,col=reg))
+g5
+```
+  
+Pour finir avec cette partie, regardons les valeurs des différents coefficients obtenus à l'aide des méthodes de régréssions.
+Le premier point à noter, c'est que les trois régressions régularisés donnent des résultats proches, contrairement à la régression linéaire.
+Précédemment, nous avions vu que les coefficients de c6h6_kg et co_kg, ce que confirme la figure \ref{fig:fig33}.
+En effet le point bleu associé à ces variables sont proches de 0.  
+Les régréssions régularisées annuleraient elles aussi le coefficient associé à c6h6_kg, mais pas celui de co_kg.
+Ces régularisations, surtout ElasticNet et Lasso, ont trouvé des valeurs proches de 0 plutôt les coefficients associés aux variables : n2o_t, nh3_kg, pm10_kg et pm25_kg.
 
 
 
@@ -1194,80 +1454,91 @@ dlog=dlog[bon_indice]
 ```
 
 
-**Modèle avec intéraction**
+__Modèle avec intéraction__
 
 Dans un premier temps on va considérer le modèle avec intéraction suivant :
 
 $$
 \begin{cases}
-  \text{ch4\_t}_i = \theta_0 + \theta_1 \text{nh3\_kg}_i + \theta_2 \text{n2o\_t}_i + \theta_3 \mathds{1}_{\{TypeEPCI_i = CC\}} + \theta_4 \mathds{1}_{\{TypeEPCI_i = CU\}} + \theta_5 \mathds{1}_{\{TypeEPCI_i = Metropole\}} + \theta_6 \text{annee}_i\\
-  + \gamma_1 \text{nh3\_kg}_i \text{n2o\_t}_i + \gamma_2 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = CC\}} + \dots\\
-  + \varepsilon_{i}\\
+  \text{ch4\_t}_i = \theta_0 + \theta_1 \text{nh3\_kg}_i + \theta_2 \text{n2o\_t}_i\\
+  \qquad \qquad \qquad + \theta_3 \mathds{1}_{\{TypeEPCI_i = CC\}} + \theta_4 \mathds{1}_{\{TypeEPCI_i = CU\}} + \theta_5 \mathds{1}_{\{TypeEPCI_i = Metropole\}}\\
+  \qquad \qquad \qquad + \theta_6 \text{annee}_i\\
+  \qquad \qquad \qquad + \gamma_1 \text{nh3\_kg}_i \text{n2o\_t}_i + \gamma_2 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = CC\}}\\
+  \qquad \qquad \qquad + \gamma_3 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = CU\}} + \gamma_4 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = Metropole\}} + \gamma_5 \text{nh3\_kg}_i \text{annee}_i\\
+  \qquad \qquad \qquad + \gamma_6 \text{n2o\_t}_i \mathds{1}_{\{TypeEPCI_i = CC\}} + \gamma_7 \text{n2o\_t}_i \mathds{1}_{\{TypeEPCI_i = CU\}}\\
+  \qquad \qquad \qquad + \gamma_8 \text{n2o\_t}_i \mathds{1}_{\{TypeEPCI_i = Metropole\}} + \gamma_9 \text{n2o\_t}_i \text{annee}_i\\
+  \qquad \qquad \qquad + \gamma_{10} \mathds{1}_{\{TypeEPCI_i = CC\}} \text{annee}_i + \gamma_{11} \mathds{1}_{\{TypeEPCI_i = CU\}} \text{annee}_i + \gamma_{12} \mathds{1}_{\{TypeEPCI_i = Metropole\}} \text{annee}_i + \varepsilon_{i}\\
+   \\
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
 
-$$
-\text{ch4}_i = \theta_0 + \theta_1 \times \text{nh3}_i + \theta_2 \times \text{n2o}_i + \theta_3 \times 1_{\text{TypeEPCICC}_i} + \theta_4 \times 1_{\text{TypeEPCICU}_i} + \theta_5 \times 1_{\text{TypeEPCIMetropole}_i} + \theta_6 \times \text{annee}_i \\
-+ \theta_7 \times \text{nh3}_i \times \text{n2o}_i + \theta_8 \times \text{nh3}_i \times 1_{\text{TypeEPCICC}_i} + \theta_9 \times \text{nh3}_i \times 1_{\text{TypeEPCICU}_i} + \theta_{10} \times \text{nh3}_i \times 1_{\text{TypeEPCIMetropole}_i} + \theta_{11} \times \text{nh3}_i \times \text{annee}_i \\
-+ \theta_{12} \times \text{n2o}_i \times 1_{\text{TypeEPCICC}_i} + \theta_{13} \times \text{n2o}_i \times 1_{\text{TypeEPCICU}_i} + \theta_{14} \times \text{n2o}_i \times 1_{\text{TypeEPCIMetropole}_i} + \theta_{15} \times \text{n2o}_i \times \text{annee}_i \\
-+ \theta_{16} \times 1_{\text{TypeEPCICC}_i} \times \text{annee}_i + \theta_{17} \times 1_{\text{TypeEPCICU}_i} \times \text{annee}_i + \theta_{18} \times 1_{\text{TypeEPCIMetropole}_i} \times \text{annee}_i \varepsilon_{i}
-$$
-avec $\varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)$
+
 
 
 ```{r,eval=TRUE,echo=FALSE}
 ancov= lm(ch4_t ~ .^2, data=dlog)
-summary(ancov)
+#summary(ancov)
 ```
 
-On va maintenant comparer ce modèle avec intéraction au modèle sans intéractions puis utiliser la fonction anova pour comparer nos deux modèles.
+On va maintenant comparer ce modèle avec intéraction :
+$$
+\begin{cases}
+  \text{ch4\_t}_i = \theta_0 + \theta_1 \text{nh3\_kg}_i + \theta_2 \text{n2o\_t}_i\\
+  \qquad \qquad \qquad + \theta_3 \mathds{1}_{\{TypeEPCI_i = CC\}} + \theta_4 \mathds{1}_{\{TypeEPCI_i = CU\}} + \theta_5 \mathds{1}_{\{TypeEPCI_i = Metropole\}}\\
+  \qquad \qquad \qquad + \theta_6 \text{annee}_i + \varepsilon_{i}\\
+   \\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
 
-```{r,echo=TRUE,eval=TRUE}
+
+```{r,echo=FALSE,eval=TRUE}
 ancov_sans_interact=lm(ch4_t ~ ., data=dlog)
-anova(ancov_sans_interact,ancov)
+#anova(ancov_sans_interact,ancov)
 ```
 
 
-On retrouve une p-valeur \<\<0.05 donc on ne peut *pas simplifier* le modèle en enlevant les interactions (au risque 5%).
+On retrouve une p-valeur de `r round(anova(ancov_sans_interact,ancov)$Pr[2], digits=3)` < 0.05 donc on ne peut *pas simplifier* le modèle en enlevant les interactions (au risque 5%).
+
 
 On va maintenant chercher à simplifier le modèle avec intéraction au maximum.
 
 On va utiliser la bibliothèque "MASS" pour effectuer une sélection de modèle basée sur le critère AIC en utilisant la fonction `stepAIC()`. Plus précisément, il effectue une sélection de modèle pas à pas dans le sens inverse (backward), ce qui signifie qu'il commence par un modèle complet (incluant toutes les variables explicatives) puis retire séquentiellement les variables qui n'améliorent pas la qualité du modèle selon le critère AIC. Le résultat est stocké dans l'objet `modselect_aic`, qui contient le modèle sélectionné avec la meilleure performance selon le critère AIC.
 
 ```{r,echo=TRUE,eval=TRUE}
-library("MASS")
 modselect_aic=stepAIC(ancov,trace=T,direction="backward")
 ```
 
 
 On a obtient que le modèle minimisant le AIC est le modèle complet sans selection des variables.
 
-```{r}
+```{r,echo=TRUE,eval=TRUE}
   modselect_bic=stepAIC(ancov,trace=T,direction="backward",k=log(nrow(dlog)))
 ```
 
-Avec le critère bic, le modèle simplifié est celui avec les variables suivantes :
-
--   nh3_kg
--   n2o_t
--   TypeEPCI
--   annee_inv
--   Les interactions entre nh3_kg et n2o_t, ainsi qu'entre nh3_kg et TypeEPCI.
-
-$$ \text{ch4}_i = \theta_0 + \theta_1 \times \text{nh3}_i + \theta_2 \times \text{n2o}_i + \theta_3 \times \text{TypeEPCICC}_i + \theta_4 \times \text{TypeEPCICU}_i + \theta_5 \times \text{TypeEPCIMetropole}_i + \theta_6 \times \text{annee}_i + \theta_7 \times \text{nh3}_i \times \text{n2o}_i + \theta_8 \times \text{nh3}_i \times \text{TypeEPCICC}_i + \theta_9 \times \text{nh3}_i \times \text{TypeEPCICU}_i + \theta_{10} \times \text{nh3}_i \times \text{TypeEPCIMetropole}_i \varepsilon_{i}$$
-avec $\varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)$
+Avec le critère bic, le modèle simplifié le suivant :
+$$
+\begin{cases}
+  \text{ch4\_t}_i = \theta_0 + \theta_1 \text{nh3\_kg}_i + \theta_2 \text{n2o\_t}_i + \theta_3 \mathds{1}_{\{TypeEPCI_i = CC\}} + \theta_4 \mathds{1}_{\{TypeEPCI_i = CU\}} + \theta_5 \mathds{1}_{\{TypeEPCI_i = Metropole\}}\\
+  \qquad \qquad \qquad + \theta_6 \text{annee}_i\\
+  \qquad \qquad \qquad + \theta_7 \text{nh3\_kg}_i \text{n2o\_t}_i + \theta_8 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = CC\}} + \theta_9 \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = CU\}}\\
+  \qquad \qquad \qquad + \theta_{10} \text{nh3\_kg}_i \mathds{1}_{\{TypeEPCI_i = Metropole\}} + \varepsilon_{i}\\
+   \\
+  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
+\end{cases}
+$$
 
 
 On va maintenant comparer l'ajustement du modèle sélectionné (modselect_bic) avec celui du modèle initial (ancov) pour déterminer si la différence dans leur performance est significative.
 
-```{r}
+```{r,echo=FALSE,eval=FALSE}
 anova(modselect_bic,ancov)
 ```
 
-On obtient une pvaleur \< 0.05 ce qui indique que l'on peut pas simplifier le modèle avec le modèle sélectionné avec le critère bic.
+On obtient une pvaleur de `r round(anova(modselect_bic,ancov)$Pr[2], digits=3)` < 0.05 ce qui indique que l'on peut pas simplifier le modèle avec le modèle sélectionné avec le critère bic.
 
-```{r}
+```{r,echo=FALSE,eval=FALSE}
 model_bic_precedent=lm(ch4_t ~ nh3_kg + n2o_t + TypeEPCI + annee_inv + nh3_kg:n2o_t + 
     nh3_kg:TypeEPCI + n2o_t:TypeEPCI + n2o_t:annee_inv,data=dlog)
 anova(model_bic_precedent,ancov)
@@ -1314,7 +1585,7 @@ dlog$ch4_t=data$ch4_t>1000
 #summary(dlog)
 
 mlg_init=glm(ch4_t~.^2,data=dlog,family=binomial(link="logit"))
-summary(mlg_init)
+#summary(mlg_init)
 ```
 
 
@@ -1326,7 +1597,6 @@ anova(mlg_sans_interact,mlg_init,test="Chisq")
 
 
 ```{r, echo=FALSE,include=FALSE}
-library("MASS")
 mlg_bic=stepAIC(mlg_init,trace=F,direction="backward",k=log(nrow(dlog)))
 summary(mlg_bic)
 ```
@@ -1378,3 +1648,8 @@ On en déduit que l’ammoniac, le protoxyde d’azote, le type d’EPCI et l’
 
 
 # Conclusion
+Ce projet nous a donc permis d’obtenir différents résultats d’analyse de données, afin de comprendre la répartition des données et leurs éventuelles corrélations.
+
+Nous avons vu, par le biais de différentes méthodes de clustering et de certains critères de sélection, que nos données semblaient pouvoir se diviser en deux clusters. Bien que la méthode des k-means en observant l’inertie intraclasses suggère cinq clusters.
+
+Les résultats obtenus sur les différentes régressions réalisées nous ont permis de comprendre que simplifier les modèles étaient assez dur, car le gaz à effet de serre dépend plus ou moins de toutes les variables.

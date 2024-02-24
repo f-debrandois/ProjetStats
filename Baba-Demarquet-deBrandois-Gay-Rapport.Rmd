@@ -38,29 +38,32 @@ library(coefplot)
 ```
 
 \listoffigures
+
+ \
+
+**Introduction**
+
+Ce rapport analyse les émissions de polluants atmosphériques dans la région Occitanie sur une période de 2014 à 2019, à partir des données fournies par le site web Atmo-Occitanie.
+
+On utilise le jeu de données suivant : \texttt{Data-projetmodIA-2324.csv}.
+Ces données comprennent les émissions de divers polluants tels que les oxydes d'azote, le dioxyde de soufre, les particules en suspension, le monoxyde de carbone, le benzène, l'ammoniac, les gaz à effet de serre, le méthane, le dioxyde de carbone et le protoxyde d'azote, ainsi que des informations sur les EPCI (Etablissements Publics de Coopération Intercommunale) telles que leur nom, leur code d'identification, leur département d'appartenance, leur latitude, leur longitude et leur type.
+
+Nous allons pour cela utiliser plusieurs méthodes d'analyse de données, et également de modèle linéaire, afin de pouvoir anlyser ce jeu de données.  
+
 \newpage
 
-# Introduction
-
-  Ce rapport analyse les émissions de polluants atmosphériques dans la région Occitanie sur une période de 2014 à 2019, à partir des données fournies par le site web Atmo-Occitanie, dans le jeu de données suivant : \texttt{Data-projetmodIA-2324.csv}. Ces données comprennent les émissions de divers polluants tels que les oxydes d'azote, le dioxyde de soufre, les particules en suspension, le monoxyde de carbone, le benzène, l'ammoniac, les gaz à effet de serre, le méthane, le dioxyde de carbone et le protoxyde d'azote, ainsi que des informations sur les EPCI (Etablissements Publics de Coopération Intercommunale) telles que leur nom, leur code d'identification, leur département d'appartenance, leur latitude, leur longitude et leur type.
-
-  Nous allons pour cela utiliser plusieurs méthodes d'analyse de données, et également de modèle linéaire, afin de pouvoir anlyser ce jeu de données.  
-
-
-
-```{r, echo=FALSE}
+```{r read_data, echo=FALSE}
 data <- read.csv("Data-projetmodIA-2324.csv")
 ```
 
 
 
-
 # Analyse descriptive des données
-  On commence par interpréter les éléments du jeu de données.\
+On commence par interpréter les éléments du jeu de données.\
 Il est composé de différentes observations de polluants ainsi que de la date et du lieu de l'observation.
 
 ## Analyse unidiemensionnelle
-  On s'intéresse dans un premier temps aux variables quantitatives du jeu de données (et en particulier aux émissions de polluants).\
+On s'intéresse dans un premier temps aux variables quantitatives du jeu de données (et en particulier aux émissions de polluants).\
 La figure \ref{fig:fig1} présente une visualisation de quelques variables quantitatives brutes.\
 
 ```{r,echo=F,eval=T}
@@ -74,14 +77,14 @@ head(data_quant)
 ```
 
 
-```{r fig1 ,echo=F,eval=TRUE,fig.cap="\\label{fig:fig1}Boxplot des variables nox_kg,co_kg,so2_kg",fig.height=1.5}
+```{r fig1,echo=F,eval=TRUE,fig.cap="\\label{fig:fig1}Boxplot des variables nox_kg,co_kg,so2_kg",fig.height=1.5}
 g1=ggplot(data_quant)+geom_boxplot(aes(y = nox_kg))
 g2=ggplot(data_quant)+geom_boxplot(aes(y = co_kg))
 g3=ggplot(data_quant)+geom_boxplot(aes(y =so2_kg ))
 grid.arrange(g1,g2,g3,ncol=3)
 ```
 
-  On observe une très grande variance de certaines données comme co_kg. 
+On observe une très grande variance de certaines données comme co_kg. 
 En observant l'histogramme des données quantitatives, on observe une distribution fortement asymétrique.
 Ainsi, si l'on souhaite effectuer des analyses sur ces données (comme par exemple une analyse en composantes principales), nos résultats seront biaisés par la variance et l'asymétrie des données.
 On transforme donc les données, comme présenté à la figure suivante.
@@ -146,7 +149,7 @@ grid.arrange(g1, g2, g3, g4, g5, g6, g11, g7, g8, g9, g10, ncol = 3)
 ```
 
 
-  La transformation la plus adaptée est la transformation $\texttt{scale(log())}$ :
+La transformation la plus adaptée est la transformation $\texttt{scale(log())}$ :
 Elle permet de mettre les données à la même échelle et de réduire l'asymétrie des données pour avoir une distribution plus proche d'une loi normale.\
 Par la suite, on manipule les variables quantitatives transformées \texttt{scale(log())}. \
 
@@ -156,22 +159,24 @@ data_scaled_df <- as.data.frame(data_quant_scaled)
 ```
 
 
+On étudie ensuite la corrélation entre les variables quantitatives.\
 
-  On étudie ensuite la corrélation entre les variables quantitatives.\
-
-```{r fig3,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig3}Corrélation entre les variables",fig.height=3}
+```{r fig3,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig3}Corrélation entre les variables",fig.height=2.5}
 mat_cor <- cor(data_scaled_df)
 corrplot(mat_cor,method="ellipse")
 ```
 
-  L'analyse de la figure \ref{fig:fig3} nous permet d'identifier rapidement les relations significatives entre nos variables. Les ellipses fortement allongées suggèrent une corrélation plus forte, tandis que les ellipses plus circulaires indiquent une corrélation plus faible. Par exemple, on note une forte corrélation entre nox_kg et ges_teqco2. 
+\newpage
 
+L'analyse de la figure \ref{fig:fig3} nous permet d'identifier rapidement les relations significatives entre nos variables.
+Les ellipses fortement allongées suggèrent une corrélation plus forte, tandis que les ellipses plus circulaires indiquent une corrélation plus faible.
+Par exemple, on note une forte corrélation entre nox_kg et ges_teqco2. 
 
 
 
 ## Analyse multidimensionnelle
-  A partir de notre jeu de données, on va chercher à résumer l'information en un nombre de variables synthétiques plus faible.\
-On effectue pour cela deux types d'analyses : une analyse en composante principale (ACP) et une analyse en composante multiple (MCA).\
+A partir de notre jeu de données, on va chercher à résumer l'information en un nombre de variables synthétiques plus faible.
+On effectue pour cela deux types d'analyses : une analyse en composante principale (ACP) et une analyse en composante multiple (MCA).
 
 
 ```{r,eval=F,echo=F}
@@ -185,7 +190,9 @@ ggplot(data=data_quali)+geom_bar(aes(x = TypeEPCI))
 
 
 ### Analyse en Compomantes Principales (ACP) des variables quantitatives
-  On s'interesse aux variables quantitatives (émissions de polluants).On cherche à visualiser les individus dans un espace de dimension réduite. Nous effectuons donc une ACP sur les variables quantitatives.\
+On s'interesse aux variables quantitatives (émissions de polluants).
+On cherche à visualiser les individus dans un espace de dimension réduite.
+Nous effectuons donc une ACP sur les variables quantitatives.
 
 
 ```{r, eval=TRUE, echo=FALSE}
@@ -195,9 +202,9 @@ annee=as.factor(data$annee_inv)
 type=as.factor(data$TypeEPCI)
 ```
 
-On affiche dans un premier temps le cercle des corrélations.\
+On affiche dans un premier temps le cercle des corrélations.
 
-```{r fig4, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig4}Cercle des corrélations",fig.height=3}
+```{r fig4, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig4}Cercle des corrélations",fig.height=2.5}
 g1 = fviz_pca_var(pca_res, col.var = "contrib",
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE # Évite le chevauchement des étiquettes
@@ -227,9 +234,9 @@ On a également le pourcentage de variance expliquée par chaque axe à la figur
 fviz_eig(pca_res, addlabels = TRUE, ylim = c(0, 50))
 ```
 
-  On retrouve bien le fait que les deux premiers axes expliquent presque 90% de la variance.\
+On retrouve bien le fait que les deux premiers axes expliquent presque 90% de la variance.\
 
-  On visualise maintenant les individus dans le plan factoriel des deux premiers axes principaux en fonction de l'année puis du type d'EPCI.\
+On visualise maintenant les individus dans le plan factoriel des deux premiers axes principaux en fonction de l'année puis du type d'EPCI.\
 
 ```{r fig6, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig6}ACP des variables quantitatives",fig.height=2}
 g1 = fviz_pca_ind(pca_res,
@@ -243,23 +250,27 @@ g2 = fviz_pca_ind(pca_res,
 grid.arrange(g1,g2,ncol=2)
 ```
 
-  On observe sur la figure \ref{fig:fig6} que l'année ne semble pas beaucoup influer sur les variables. En effet, les points de différentes couleurs sur la figure de gauche se superposent, montrant que l'année ne permet pas de distinguer clairement les individus. En revanche, le type d'EPCI influe lui beaucoup plus, car on remarque que les points de différentes couleurs sont bien séparés.
+On observe sur la figure \ref{fig:fig6} que l'année ne semble pas beaucoup influer sur les variables.
+En effet, les points de différentes couleurs sur la figure de gauche se superposent, montrant que l'année ne permet pas de distinguer clairement les individus.
+En revanche, le type d'EPCI influe lui beaucoup plus, car on remarque que les points de différentes couleurs sont bien séparés.
 
 
 
 
 ### Réduction de dimension (MCA)
 
-  Dans cette partie, on cherche à effectuer une réduction de dimension pour les polluants et du type EPCI.
-Nous allons donc utiliser une MCA (Multiple Correspondance Analysis). Les polluants sont des variables quantitatvives nous avons donc besoin de discrétiser ces variables. Nous allons former un nombre fini d'intervalles qui formeront les modalités des nouvelles variables qualitatives.\
+Dans cette partie, on cherche à effectuer une réduction de dimension pour les polluants et du type EPCI.
+Nous allons donc utiliser une MCA (Multiple Correspondance Analysis).
+Les polluants sont des variables quantitatvives nous avons donc besoin de discrétiser ces variables.
+Nous allons former un nombre fini d'intervalles qui formeront les modalités des nouvelles variables qualitatives.\
 
-  Nous allons aussi retirer les valeurs aberrantes c'est-à-dire en-dehors des quantiles (voir boxplot) :
+Nous allons aussi retirer les valeurs aberrantes c'est-à-dire en-dehors des quantiles (voir figure \ref{fig:fig1}).
 En effet, la MCA est sensible aux valeurs extrêmes car elle vise à maximiser la variance des données.
 Les outliers, en raison de leur nature inhabituelle, peuvent influencer significativement la variance et ainsi biaiser les résultats de l'analyse.
 
 
 
-```{r, eval=TRUE, echo=FALSE}
+```{r donnees_aberrantes_function, eval=TRUE, echo=FALSE}
 # Fonction pour retirer les outliers
 enlever_donnee_aber <- function(data_frame,columns) {
 
@@ -314,16 +325,15 @@ prepa_data_mca<-function(breaks,data_mca) {
 data_mca_3=prepa_data_mca(3,data_mca)
 data_mca_4=prepa_data_mca(4,data_mca)
 data_mca_5=prepa_data_mca(5,data_mca)
-
 ```
 
 
-  Ensuite, nous appliquons l'Analyse en Composantes Principales 
+Ensuite, nous appliquons l'Analyse en Composantes Principales 
 à l'aide de la bibliothèque factoMineR, en variant les intervalles de découpage 
 des données quantitatives en données qualitatives.
 
 
-```{r fig7, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig7}MCA avec découpage des données en 3, 4 et 5 intervalles",fig.height=3}
+```{r fig7, eval=TRUE, echo=FALSE,fig.cap="\\label{fig:fig7}MCA avec découpage des données en 3, 4 et 5 intervalles",fig.height=2.5}
 # Réalisation de l'Analyse des Correspondances Multiples (MCA)
 mca_result_3 <- MCA(data_mca_3, graph = FALSE)
 mca_result_4 <- MCA(data_mca_4, graph = FALSE)
@@ -337,18 +347,18 @@ grid.arrange(g1,g2,g3,ncol=3)
 ```
 
 
-  L'analyse des résultats de la MCA révèle une structure significative
+L'analyse des résultats de la MCA révèle une structure significative
 lorsque les variables sont regroupées selon un découpage en trois intervalles. 
 Dans ce scénario, les variables partageant le même découpage d'intervalles 
 présentent un regroupement cohérent, suggérant une association claire entre ces catégories.
 
-  Les deux premiers axes principaux de l'Analyse en Composantes Principales (MCA) 
+Les deux premiers axes principaux de l'Analyse en Composantes Principales (MCA) 
 capturent un pourcentage significatif de la variance totale, 
 avec des valeurs respectives de 27% et 17%. 
 Ces résultats indiquent que ces axes fournissent une représentation robuste 
 des relations entre les variables, soulignant des patterns structurés dans les données.
 
-  Cependant, lorsqu'on effectue un découpage en un plus grand nombre d'intervalles, 
+Cependant, lorsqu'on effectue un découpage en un plus grand nombre d'intervalles, 
 les pourcentages associés aux axes principaux diminuent, 
 suggérant une dispersion accrue des données. 
 Cela peut être interprété comme une indication que le découpage en trois intervalles 
@@ -356,15 +366,16 @@ offre une simplification pertinente,
 condensant l'information tout en préservant la structure sous-jacente, 
 tandis qu'un découpage plus fin pourrait introduire du bruit ou de la complexité excessive.
 
-  En résumé, l'analyse suggère que le découpage en trois intervalles 
+En résumé, l'analyse suggère que le découpage en trois intervalles 
 optimise la représentation des variables, 
 offrant une compréhension significative des relations dans les données, 
 tandis qu'un découpage plus fin pourrait conduire à une perte de clarté et à une dilution de l'information utile.
 
+\newpage
 
 # Classification des EPCI
 
-  On cherche à classer les EPCI en fonction de leurs émissions de polluants. On utilise pour cela différentes méthodes de classification.
+On cherche à classer les EPCI en fonction de leurs émissions de polluants. On utilise pour cela différentes méthodes de classification.
 
 ## Clustering
 
@@ -374,7 +385,7 @@ On met en place différents algorithmes de clustering :\
 
 ### Méthodes des k-means
 
-  On détermine combien de classes choisir en observant le comportement de l’inertie intraclasse en fonction du nombre de classes $(k)$ :
+On détermine combien de classes choisir en observant le comportement de l’inertie intraclasse en fonction du nombre de classes $(k)$ :
 
 ```{r fig8,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig8}Determination du nombre de clusters optimal",fig.height=2, fig.width=5}
 # On détermine combien de centres choisir
@@ -395,10 +406,10 @@ ggplot(df,aes(x=K,y=Iintra))+geom_line()+geom_point()+xlab("Nombre de classes")+
 ```
 
 
-  On observe un coude sur le graphe de l’inertie itntraclasse à partir de K = 5 classes.
+On observe un coude sur le graphe de l’inertie itntraclasse à partir de K = 5 classes.
 On choisit donc 5 classes d’après le critère des K-means, et on obtient ainsi le résultat suivant :
 
-```{r fig9,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig9}K-means avec K=5",fig.height=3, fig.width=5}
+```{r fig9,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig9}K-means avec K=5",fig.height=2.5, fig.width=5}
 # On choisit K = 5
 reskmeans <- kmeans(data_kmeans,centers=5,nstart =20)
 
@@ -418,7 +429,7 @@ fviz_pca_ind(pca_res)
 
 ### Critère de sélection Silhouette
 
-  Toujours en faisant varier k, on extrait la moyenne des indices de silhouette de chaque cluster, afin d’obtenir le graphe suivant :
+Toujours en faisant varier k, on extrait la moyenne des indices de silhouette de chaque cluster, afin d’obtenir le graphe suivant :
 
 ```{r fig10,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig10}Critère de sélection Silhouette",fig.height=2, fig.width=5}
 Silhou<-NULL
@@ -444,18 +455,20 @@ C’est pour cela que nous allons exploiter d’autres méthodes de clustering.
 Voici les résultats graphiques obtenus pour $K = 2$ avec Silhouette :
 
 
-```{r fig1,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}Silhouette avec K=2",fig.height=2, fig.width=5}
+```{r fig101,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}Silhouette avec K=2",fig.height=2, fig.width=5}
 aux<-silhouette(reskmeanscl[,1],daisy(data_kmeans))
 fviz_silhouette(aux)+theme(plot.title = element_text(size =9))
 ```
 
-Au vu des des silhouettes du graphe, il y a une bonne répartition des clusters. En effet, les classes semblent homogènes en termes d'effectif. De plus, on note qu'il n'y a pas de $s(i)$ négatifs, signifiant que les points de chaques classes sont assez éloignés des autres classes.
+Au vu des des silhouettes du graphe, il y a une bonne répartition des clusters.
+En effet, les classes semblent homogènes en termes d'effectif.
+De plus, on note qu'il n'y a pas de $s(i)$ négatifs, signifiant que les points de chaques classes sont assez éloignés des autres classes.
 
 
 ### Mélanges Gaussiens
 
 
-#### Critère de sélection BIC
+**Critère de sélection BIC et ICL**
 
 Les critères BIC et ICL ne nous ont pas permis d’obtenir de résultats satisfaisants, et leur compilation est très longue en raison du grand nombre de composantes que nous avons dû afficher pour espérer avoir un critère d’arrêt.
 Nous n’avons donc pas jugé utile d’afficher les différents graphiques obtenus.
@@ -464,13 +477,14 @@ Cependant, le graphe nous a permis d’écarter tous les modèles sphériques et
 
 En conservant uniquement les modèles les plus « performants », on remarque que le modèle retenu dans tous les cas est VEV. Cependant, il semblerait que le critère n’arrive toujours pas à trouver un point d’arrêt pour le nombre optimal de clusters.
 Nous avons donc utilisé le critère ICL sur les coordonnées de l’ACP.
-Cependant, aucun résultant intéressant n’a été obtenu avec celui-ci aussi, le nombre de classes suggéré étant beaucoup trop grand.  
+Cependant, aucun résultant intéressant n’a été obtenu avec celui-ci aussi, le nombre de classes suggéré étant beaucoup trop grand.
+
 Nous avons donc cherché à savoir quand est-ce que le graphe du critère ICL pour le modèle VEV se stabilisait.
 Une fois encore, le résultat n’était pas interprétable, compte tenu du fait que le graphe commençait à stagner à partir de $K = 50$ classes, ce qui est beaucoup trop grand.
 
 
 
-```{r fig44,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig44}Mélanges Gaussiens avec K=5",fig.height=2}
+```{r fig11,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig11}Mélanges Gaussiens avec K=5",fig.height=2}
 # mélange (en janvier)
 Data_melG <- data_scaled_df
 Data_melG <- enlever_donnee_aber(Data_melG, colnames(Data_melG))
@@ -481,7 +495,7 @@ fviz_mclust_bic(resBIC,what=c("classification","uncertainty","BIC"))
 ```
 
 
-```{r fig45,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig45}Mélanges Gaussiens avec K=5",fig.height=2}
+```{r fig12,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig12}Mélanges Gaussiens avec K=5",fig.height=2}
 # On peut écarter tous les modèles sphériques et diagonaux, et donc les écarter du modèle.
 # VEV est toujours en haut, on se concentre donc sur celui-ci :
 
@@ -491,7 +505,7 @@ summary(resBIC_VEV)
 ```
 
 
-```{r fig46,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig46}Mélanges Gaussiens avec K=5",fig.height=2}
+```{r fig13,echo=FALSE,eval=FALSE,fig.cap="\\label{fig:fig13}Mélanges Gaussiens avec K=5",fig.height=2}
 pca_res <- prcomp(Data_melG, scale. = TRUE)
 pca_coordinates <- pca_res$x
 
@@ -580,7 +594,7 @@ daux.s<-data.frame(NbClust=2:Kmax,silhou=S)
 ClustS<-cutree(hward,k=2)
 ```
 
-```{r fig41,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig41}Critère de sélection Calinski-Harabasz et Silhouette",fig.height=2}
+```{r fig14,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig14}Critère de sélection Calinski-Harabasz et Silhouette",fig.height=2}
 g1 = ggplot(daux.ch,aes(x=NbClust,y=CH))+geom_line()+geom_point()
 g2 = ggplot(daux.s,aes(x=NbClust,y=S))+geom_line()+geom_point()
 grid.arrange(g1,g2,ncol=2)
@@ -593,8 +607,8 @@ fviz_dend(hward,k=which.max(CH)+1,show_labels=FALSE,rect = TRUE, rect_fill = TRU
 
 
 Ainsi nous obtenons la répartition des données suivante :
-
-```{r fig43,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig43}Mélanges Gaussiens avec K=5",fig.height=3}
+\newpage
+```{r fig15,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig15}Mélanges Gaussiens avec K=5",fig.height=3}
 ClustS<-cutree(hward,k=which.max(S)+1)
 fviz_dend(hward,k=which.max(S)+1,show_labels=FALSE,rect = TRUE, rect_fill = TRUE,palette = "npg",rect_border = "npg",
           labels_track_height = 0.8)
@@ -677,9 +691,9 @@ La LDA permet également de trouver la combinaisons linéaires des coordonnées 
 
 ### Taux d'émission de méthane
 Dans notre cas, nous créeons une nouvelle variable binaire, valant 1 si le taux d'émission de méthane dépasse les 1000 tonnes par an, et 0 sinon.
-Nous effectuons ensuite une LDA, et nous pouvons visualiser les résultats dans la figure \ref{fig:fig11}.
+Nous effectuons ensuite une LDA, et nous pouvons visualiser les résultats dans la figure \ref{fig:fig13}.
 
-```{r fig11,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig11}LDA sur le taux de méthane",fig.height=2, fig.width=5}
+```{r fig16,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig16}LDA sur le taux de méthane",fig.height=2, fig.width=5}
 # Afficher les individus dans le graphique
 vec=c(rep(1,nrow(d_train)))
 ggplot(df_lda,aes(x=mp,y=vec,color=ch4_t)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("y")
@@ -697,7 +711,7 @@ Afin de vérifier la capacité de classification du taux de méthane, nous allon
 La LDA précédente a été faite sur 70% des individus, afin de pouvoir faire une prédiction sur les 30% restants.
 Nous obtenons les résultats sur la figure suivante :
 
-```{r fig12,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig12}Prédiction sur le taux de méthane",fig.height=2, fig.width=5}
+```{r fig17,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig17}Prédiction sur le taux de méthane",fig.height=2, fig.width=5}
 heatmap_data <- as.data.frame(conf_mat.ch4$table)
 
 ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
@@ -717,7 +731,7 @@ Ainsi, utiliser le taux de méthane pour classer les individus de façon supervi
 ### Type d'EPCI
 Nous reprenons le même procédé, mais ici avec la variable qualitative type d'EPCI.
 Cette variable a 4 modalités, nous allons donc avoir une LDA a trois dimensions.
-Nous pouvons visualiser le résultat de la LDA dans la figure \ref{fig:fig3}. Nous pouvons afficher le résultat pour les trois dimensions de la LDA, mais nous avons seulement afficher dans les deux premières dimensions dans la figure \ref{fig:fig3}, car c'est l'affichage le plus parlant.
+Nous pouvons visualiser le résultat de la LDA dans la figure \ref{fig:fig15}. Nous pouvons afficher le résultat pour les trois dimensions de la LDA, mais nous avons seulement afficher dans les deux premières dimensions dans la figure \ref{fig:fig3}, car c'est l'affichage le plus parlant.
 
 
 
@@ -758,7 +772,7 @@ ggplot(df_lda,aes(x=x.LD2,y=x.LD3,color=TypeEPCI)) + geom_point(size=2)+ ggtitle
 ```
 
 
-```{r fig13,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig13}LDA en fonction des types EPCI",fig.height=2, fig.width=5}
+```{r fig18,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig18}LDA en fonction des types EPCI",fig.height=2, fig.width=5}
 ggplot(df_lda,aes(x=x.LD1,y=x.LD2,color=TypeEPCI)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("LD2")
 ```
 
@@ -768,8 +782,7 @@ Le type d'EPCI semble bien séparé les données également, et nous allons conf
 Comme pour le taux de méthane, la LDA a été faite sur 70% des données, et nous allons maintenant faire une prédiction sur les 30% restants.  
 
 
-
-```{r fig14,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig14}Prédiction sur le type d'EPCI",fig.height=3}
+```{r fig19,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig19}Prédiction sur le type d'EPCI",fig.height=2, fig.width=5}
 heatmap_data <- as.data.frame(conf_mat.EPCI$table)
 
 ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
@@ -783,7 +796,7 @@ ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
 
 
 
-Nous pouvons voir grâce à la figure \ref{fig:fig14} table que les individus sont plutôt bien prédits.
+Nous pouvons voir grâce à la figure \ref{fig:fig19} table que les individus sont plutôt bien prédits.
 On obtient un taux de précision de `r round(as.numeric(conf_mat.EPCI$overall[1]), digits=3)`.
 Ainsi, le type d'EPCI différencie bien les individus, comme le laisser présager les résultats de l'ACP. et nous obtenons un bon taux de précision.
 Cependant, il y a une forte dissimilarité entre les nombres d'individus par modalité.
@@ -861,7 +874,7 @@ print(lda_model)
 ```
 
 
-```{r fig15,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig15}LDA en fonction des types EPCI",fig.height=2}
+```{r fig20,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig20}LDA en fonction des types EPCI",fig.height=2}
 g1=ggplot(df_lda_simp1,aes(x=x.LD1,y=x.LD2,color=TypeEPCI)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("LD2")
 g2=ggplot(df_lda_simp2,aes(x=LD1,y=vec,color=TypeEPCI)) + geom_point(size=2)+ ggtitle("LDA Resultats")+xlab("LD1")+ylab("LD2")
 grid.arrange(g1,g2,ncol=2)
@@ -874,6 +887,7 @@ Ainsi, lors du premier regroupement, nous observons un résultat très similaire
 Pour le deuxième regroupement, on semble pouvoir observer que les "CC" ont une coordonnée assez faible, contrairement aux "Metr_CU".
 Séparer les données à partir de ce regroupement semble plus simple, voyons si les prédictions confirment ceci.
 
+\newpage
 
 ```{r,echo=FALSE}
 predictions_simp1 <- predict(lda_model_simp1, newdata = d_test_simp1)
@@ -886,7 +900,7 @@ conf_mat_simp2=confusionMatrix(as.factor(d_test_simp2$TypeEPCI),predictions_simp
 
 
 
-```{r fig16,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig16}Prédiction en fonction des types EPCI simplifiés",fig.height=2.5}
+```{r fig21,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig21}Prédiction en fonction des types EPCI simplifiés",fig.height=2.5}
 heatmap_data_s1 <- as.data.frame(conf_mat_simp1$table)
 heatmap_data_s2 <- as.data.frame(conf_mat_simp2$table)
 
@@ -911,7 +925,8 @@ grid.arrange(m1,m2,ncol=2)
 ```
 
 Nous obtenons un taux de précision de `r round(as.numeric(conf_mat_simp1$overall[1]), digits=3)` pour le premier regroupement, et de `r round(as.numeric(conf_mat_simp2$overall[1]), digits=3)` pour le deuxième.
-Ainsi, contrairement à ce qu'on a pu penser, nous ne gagnons pas en précision en faisant des regroupements.
+Ainsi, contrairement à ce qu'on a pu penser, nous ne gagnons pas largement en précision en faisant des regroupements.
+
 Cela vient probablement du fait que les classes "CA" et "CC" sont les plus proches, et donc l'erreur vient principalement d'une erreur de prédiction entre ces deux classes.
 Or, nos regroupements n'ont pas agréger ces deux classes, n'améliorant donc pas la précision.
 
@@ -1142,18 +1157,18 @@ Ces deux p-valeurs sont supérieures à 0.05.
 Cela pourrait suggérer la possibilité de les exclure du modèle afin de le simplifier.  
 
 
-Nous allons maintenant simplifier le modèle en selctionnant les variables explicatives pertinentes.
+Nous allons maintenant simplifier le modèle en selctionnant les variables explicatives pertinentes.\
 
 __Avec la méthode backward__
 
 On obtient les résultats suivants avec la méthode backward.  
-Sur R : $\texttt{regsubsets(ges\_teqco2\~.,data=data\_scaled\_df,nbest=1,nvmax=10,method="backward")}$
+Sur R : $\texttt{regsubsets(ges\_teqco2\~.,data=data\_scaled\_df,nbest=1,nvmax=10,method="backward")}$ \
 ```{r,echo=FALSE,eval=TRUE}
 choixb<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="backward")
 #summary(choixb)
 ```
 
-```{r,echo=FALSE,eval=TRUE, fig.show="hold",fig.cap="\\label{fig:fig55}Sélection des variables explicatives en backward",fig.height=3}
+```{r fig22,echo=FALSE,eval=TRUE, fig.show="hold",fig.cap="\\label{fig:fig22}Sélection des variables explicatives en backward",fig.height=3}
 par(mfrow=c(1,3))
 
 plot(choixb, scale="bic")
@@ -1163,6 +1178,7 @@ plot(choixb, scale="Cp")
 par(mfrow=c(1,1))
 ```
 
+\newpage
 
 En utilisant la méthode Backward, tous les critères conduisent à la même sélection de variables, celle pour laquelle nous avions formulé l'hypothèse précédemment lors des tests de nullité.
 
@@ -1175,7 +1191,7 @@ $$
   \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
 \end{cases}
 $$
-
+ \
 
 __Avec la méthode forward__
 
@@ -1186,7 +1202,7 @@ choixf<-regsubsets(ges_teqco2~.,data=data_scaled_df,nbest=1,nvmax=10,method="for
 #summary(choixf)
 ```
 
-```{r fig58, echo=FALSE,eval=TRUE,fig.show="hold", fig.cap="\\label{fig:fig58}Sélection des variables explicatives en forward",fig.height=3}
+```{r fig23, echo=FALSE,eval=TRUE,fig.show="hold", fig.cap="\\label{fig:fig23}Sélection des variables explicatives en forward",fig.height=3}
 par(mfrow=c(1,3))
 
 plot(choixf, scale="bic")
@@ -1195,6 +1211,8 @@ plot(choixf, scale="Cp")
 
 par(mfrow=c(1,1))
 ```
+
+\newpage
 
 Les résultats obtenus à partir de tous les critères concordent avec ceux de la méthode backward pour simplifier le modèle en éliminant les variables co_kg et c6h6_kg.
 Il est désormais essentiel de valider ce sous-modèle.
@@ -1251,26 +1269,16 @@ reg_simpl=lm(formula=ges_teqco2~nox_kg+so2_kg+pm10_kg+pm25_kg+nh3_kg+ch4_t+co2_t
 #anova(reg_simpl,mod_ges)
 ```
 
-Nous gardons donc le modèle :
+\newpage
 
+Nous faisons ensuite un autoplot, afin de pouvoir vérifier les différentes hypothèses d'un modèle linéaire sur la figure suivante :
 
-$ges_i = \theta_0 + \theta_1nox_i+\theta_2so2_i + \theta_3pm10_i + \theta_4pm25_i  + \theta_5nh3_i +\theta_6 ch4_i + \theta_7co2_i + \theta_8no2_i + \epsilon$
-$$
-\begin{cases}
-  ges_i = \theta_0 + \theta_1nox_i+\theta_2so2_i + \theta_3pm10_i\\
-   + \theta_4pm25_i  + \theta_5nh3_i +\theta_6 ch4_i\\
-   + \theta_7co2_i + \theta_8no2_i + \varepsilon_i\\
-  \varepsilon_{i} \sim \mathcal{N}(0,\sigma^2)
-\end{cases}
-$$
-
-```{r, echo=FALSE}
+```{r fig30, echo=FALSE,eval=TRUE, fig.cap="\\label{fig:fig30}Autoplot modèle régression linéaire",fig.height=3}
 autoplot(reg_simpl,which=c(1,2),label.size=2)     
 ```
 
-Nous faisons ensuite un autoplot, afin de pouvoir vérifier les différentes hypothèses d'un modèle linéaire.
-Premièrement, les $\epsilon_i$ doivent être centré en 0.
-Quand on regarde le premier graphe, on remarque que les résidus $\hat{\epsilon_i}$ semblent centrés en 0.
+Premièrement, les $\epsilon_i$ doivent être centré en $0$.
+Quand on regarde le premier graphe, on remarque que les résidus $\hat{\epsilon_i}$ semblent centrés en $0$.
 La deuxième hypothèse nous dit que tous les $\epsilon_i$ ont la même variance.
 Or, tous les individus semblent contenu dans un tube, nous indiquant que cette hypothèse semble vérifiée.
 Ensuite la troisième hypothèse est l'indépendance entre les $\epsilon_i$ et $Y_i$.
@@ -1278,7 +1286,7 @@ Dans le premier graphe, il n'y a pas de forme particulière, et les $\epsilon_i$
 La dernière hypothèse est celle de la normalité des $Y_i$. En regardant le Q-Q plot, les quantiles empiriques sont plutôt proches des théoriques. 
 Ainsi, les 4 hypothèses sont vérifiées, le modèle linéaire est donc adapté pour réprésenter ces données.
 
-```{r, echo=FALSE, eval=TRUE}
+```{r, echo=FALSE,eval=TRUE}
 tildeY=scale(data_quant[,8],center=T,scale=T)
 tildeX=scale(data_quant[,-8],center=T,scale=T)
 
@@ -1304,21 +1312,22 @@ g1 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
   scale_x_log10()
 ggplotly(g1)
 ridge_cv <- cv.glmnet(tildeX, tildeY, alpha = 0, lambda = lambda_seq,nfolds=10, type.measure=c("mse"),intercept=F)
-best_lambda <- ridge_cv$lambda.min
-best_lambda
+best_lambda.ridge <- ridge_cv$lambda.min
 ```
 
-##### Ridge  
+**Ridge**  
 
-  Commençons par faire une régréssion Ridge. Cette méthode consiste à définir $pen(\theta) = \|\theta\|^2_2$. On commence par calculer la valeurs des coefficients de $\hat{\theta}$ minimisant la fonction pour différentes valeurs de $\lambda$, réprésentées dans la figure \ref{fig:fig30} . Ensuite, nous faisons une validation croisée afin de trouver le $\lambda$ optimal. En regardant la figure de droite de \ref{fig:fig30}, on remarque que le $\lambda$ retenu est 
-```{r,results='asis',echo=FALSE}
-cat(best_lambda)
-```
-. La droite rouge dans la figure de droite est tracé au niveau du lambda optimal, et nous permet de récupérer les coefficients du $\hat{\theta}$ final.
+Commençons par faire une régréssion Ridge. Cette méthode consiste à définir $pen(\theta) = \|\theta\|^2_2$.
+On commence par calculer la valeurs des coefficients de $\hat{\theta}$ minimisant la fonction pour différentes valeurs de $\lambda$, réprésentées dans la figure \ref{fig:fig24}.
+Ensuite, nous faisons une validation croisée afin de trouver le $\lambda$ optimal.
+En regardant la figure de droite de \ref{fig:fig24}, on remarque que le $\lambda$ retenu est `r round(best_lambda.ridge, digits=3)`.
+La droite rouge dans la figure de droite est tracé au niveau du lambda optimal, et nous permet de récupérer les coefficients du $\hat{\theta}$ final.
 
-```{r fig30,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig30}Régularisation Ridge",fig.height=3}
+\newpage
+
+```{r fig24,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig24}Régularisation Ridge",fig.height=3}
 g1=g1 + 
-  geom_vline(xintercept = best_lambda,linetype="dotted", color = "red")+
+  geom_vline(xintercept = best_lambda.ridge,linetype="dotted", color = "red")+
   scale_x_log10()
 
 df2=data.frame(lambda=ridge_cv$lambda,MSE=ridge_cv$cvm,cvup=ridge_cv$cvup,cvlo=ridge_cv$cvlo)
@@ -1335,12 +1344,11 @@ grid.arrange(g1,gmse,ncol=2)
 extract.coef(ridge_cv,lambda = "lambda.min")
 ```
 
-##### Lasso  
+**Lasso**  
 
-  On effectue exactement la même procédure, mais avec une régression de Lasso, qui correspond à :
-  $pen(\theta) = \|\theta\|_1$
+On effectue exactement la même procédure, mais avec une régression de Lasso, qui correspond à : $pen(\theta) = \|\theta\|_1$
 
-```{r fig31,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig31}Régularisation Lasso",fig.height=3}
+```{r fig25,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig25}Régularisation Lasso",fig.height=3}
 fitlasso <- glmnet(tildeX,tildeY, alpha = 1, lambda = lambda_seq,family=c("gaussian"),intercept=F)
 
 df=data.frame(lambda = rep(fitlasso$lambda,ncol(tildeX)), theta=as.vector(t(fitlasso$beta)),variable=rep(colnames(tildeX),each=length(fitlasso$lambda)))
@@ -1350,12 +1358,12 @@ g3 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
   scale_x_log10()
 
 lasso_cv <- cv.glmnet(tildeX, tildeY, alpha = 1, lambda = lambda_seq,nfolds=10, type.measure=c("mse"),intercept=F) 
-best_lambda <-lasso_cv$lambda.min
+best_lambda.lasso <-lasso_cv$lambda.min
 lambda1se <- lasso_cv$lambda.1se
 
 
 g3=g3 + 
-  geom_vline(xintercept = best_lambda,linetype="dotted", color = "red")+
+  geom_vline(xintercept = best_lambda.lasso,linetype="dotted", color = "red")+
   geom_vline(xintercept = lambda1se,linetype="dotted", color = "blue")+
   scale_x_log10()
 
@@ -1370,19 +1378,15 @@ gmse<-ggplot(df2)+
 grid.arrange(g3,gmse,ncol=2)
 ```
 
-  Notre $\lambda$ optimal est:
-```{r,results='asis',echo=FALSE}
-cat(best_lambda)
-```
-.
+Notre $\lambda$ optimal est: `r round(best_lambda.lasso, digits=3)`.
 
 ```{r,echo=FALSE,include=FALSE}
 extract.coef(lasso_cv,lambda = "lambda.min")
 ```
 
-##### Elastic Net  
+**Elastic Net**  
 
-```{r fig32,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig32}Régularisation Elastic Net",fig.height=3}
+```{r fig26,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig26}Régularisation Elastic Net",fig.height=3}
 fitEN <- glmnet(tildeX, tildeY, alpha = 0.5, lambda = lambda_seq, type.measure=c("mse"),intercept=F)
 df=data.frame(lambda = rep(fitEN$lambda,ncol(tildeX)), theta=as.vector(t(fitEN$beta)),variable=rep(c(colnames(tildeX)),each=length(fitEN$lambda)))
 g4 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
@@ -1390,8 +1394,8 @@ g4 = ggplot(df,aes(x=lambda,y=theta,col=variable))+
   theme(legend.position="bottom")+
   scale_x_log10()
 EN_cv <- cv.glmnet(tildeX, tildeY, alpha = 0.5, lambda = lambda_seq, type.measure=c("mse"),intercept=F) 
-best_lambda <-EN_cv$lambda.min
-g4=g4 + geom_vline(xintercept = best_lambda,linetype="dotted", 
+best_lambda.elastic <-EN_cv$lambda.min
+g4=g4 + geom_vline(xintercept = best_lambda.elastic,linetype="dotted", 
                 color = "red")
 df2=data.frame(lambda=EN_cv$lambda,MSE=EN_cv$cvm,cvup=EN_cv$cvup,cvlo=EN_cv$cvlo)
 gmse<-ggplot(df2)+
@@ -1404,11 +1408,8 @@ gmse<-ggplot(df2)+
 grid.arrange(g4,gmse,ncol=2)
 ```
   
-Le $\lambda$ optimal pour Elastic Net est de :
-```{r,results='asis',echo=FALSE}
-cat(best_lambda)
-```
-.
+Le $\lambda$ optimal pour Elastic Net est de : `r round(best_lambda.elastic, digits=3)`.
+
 
 
 ```{r,echo=FALSE,include=FALSE}
@@ -1417,7 +1418,9 @@ extract.coef(EN_cv,lambda = "lambda.min")
 
 #### Analyse des résultats  
 
-```{r fig33,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig33}Résultats des différentes régularisations",fig.height=3}
+Pour finir avec cette partie, regardons les valeurs des différents coefficients obtenus à l'aide des méthodes de régréssions.
+
+```{r fig27,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig27}Résultats des différentes régularisations",fig.height=3}
 regusuel=  mod_ges
 df4=data.frame(x=rep(colnames(tildeX),4),
                coef=c(as.vector(regusuel$coefficients)[-1],as.vector(coef(ridge_cv,s=ridge_cv$lambda.min)[-1]),as.vector(coef(lasso_cv)[-1]),as.vector(coef(EN_cv)[-1])),
@@ -1428,10 +1431,10 @@ g5=ggplot(df4)+
 g5
 ```
   
-Pour finir avec cette partie, regardons les valeurs des différents coefficients obtenus à l'aide des méthodes de régréssions.
+
 Le premier point à noter, c'est que les trois régressions régularisées donnent des résultats proches, contrairement à la régression linéaire.
-Précédemment, nous avions vu que les coefficients de c6h6_kg et co_kg, ce que confirme la figure \ref{fig:fig33}.
-En effet le point bleu associé à ces variables sont proches de 0.  
+Précédemment, nous avions vu que les coefficients de c6h6_kg et co_kg, ce que confirme la figure \ref{fig:fig27}.
+En effet le point bleu associé à ces variables sont proches de $0$.  
 Les régréssions régularisées annuleraient elles aussi le coefficient associé à c6h6_kg, mais pas celui de co_kg.
 Ces régularisations, surtout ElasticNet et Lasso, ont trouvé des valeurs proches de 0 plutôt les coefficients associés aux variables : n2o_t, nh3_kg, pm10_kg et pm25_kg.
 
@@ -1625,7 +1628,7 @@ conf_mat.mlg=confusionMatrix(as.factor(resultat$prediction),as.factor(resultat$v
 ```
 
 
-```{r fig20,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig20}Prédiction sur le taux de méthane",fig.height=3}
+```{r fig28,echo=FALSE,eval=TRUE,fig.cap="\\label{fig:fig28}Prédiction sur le taux de méthane",fig.height=3}
 heatmap_data <- as.data.frame(conf_mat.mlg$table)
 
 ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
@@ -1637,14 +1640,13 @@ ggplot(heatmap_data, aes(x = Reference, y = Prediction, fill = Freq)) +
        y = "Prédiction")
 ```
 
-Nous obtenons la figure \ref{fig:fig20}.
+Nous obtenons la figure \ref{fig:fig28}.
 Ce résultat a un taux de précision de `r round(as.numeric(conf_mat.mlg$overall[1]), digits=3)`.
 C'est très correct, car avec la LDA nous obtenions un taux de précision de `r round(as.numeric(conf_mat.ch4$overall[1]), digits=3)`.
 Ainsi, en ne gardant que certaines variables, nous obtenons un score plutôt proche.
 On en déduit que l’ammoniac, le protoxyde d’azote, le type d’EPCI et l’année explique bien le dépassement d’émission de méthane de 1000 t par an.
 
 
-\newpage
 # Conclusion
 Ce projet nous a donc permis d’obtenir différents résultats d’analyse de données, afin de comprendre la répartition des données et leurs éventuelles corrélations.
 
@@ -1653,3 +1655,5 @@ Nous avons vu, par le biais de différentes méthodes de clustering et de certai
 Les résultats obtenus sur les différentes régressions réalisées nous ont permis de comprendre que simplifier les modèles était assez dur, car le gaz à effet de serre dépend plus ou moins de toutes les variables.
 
 Ce projet fut l'occasion d'implémenter différentes méthodes et de comparer les résultats obtenus avec chacune de ces méthodes. Au final, elles ne mènent pas toutes aux mêmes conclusions, il a donc été important d'analyser les résultats obtenus à chaque fois afin d'arriver aux bonnes conclusions.
+
+
